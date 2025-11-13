@@ -1,38 +1,243 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Primera Página Web</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Pruebas - Base de prueba 2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            height: 100vh;
+            width: 240px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 0;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: width 0.3s ease;
+        }
+        
+        /* Estado colapsado del menú */
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        /* Botón de alternancia */
+        .menu-toggle-button {
+            background: none;
+            border: none;
+            color: #ffffff; /* Este es el color corregido del ícono */
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+            position: absolute;
+            top: 15px;
+            left: 200px;
+            transition: left 0.3s ease;
+        }
+        
+        .sidebar.collapsed .menu-toggle-button {
+            left: 20px;
+        }
+
+        /* Contenido del sidebar */
+        .sidebar-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: flex-start;
+            padding: 0 15px;
+            overflow: hidden;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .sidebar-content {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ecf0f1;
+        }
+
+        .sidebar h3 {
+            text-align: center;
+            font-size: 14px;
+            font-weight: normal;
+            margin-bottom: 25px;
+            color: #bdc3c7;
+        }
+
+        .usuario {
+            text-align: center;
+            font-size: 13px;
+            margin-bottom: 35px;
+            color: #ecf0f1;
+        }
+        
+        /* Oculta los títulos y el usuario en el estado colapsado */
+        .sidebar.collapsed h2,
+        .sidebar.collapsed h3,
+        .sidebar.collapsed .usuario {
+            display: none;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            margin: 6px 0;
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background 0.2s ease, padding-left 0.2s ease;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .sidebar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding-left: 28px;
+        }
+        
+        .sidebar.collapsed a {
+            justify-content: center;
+            padding: 16px 0;
+        }
+
+        .sidebar a i {
+            margin-right: 15px;
+            font-size: 18px;
+            transition: margin-right 0.3s ease;
+        }
+        
+        .sidebar.collapsed a i {
+            margin-right: 0;
+        }
+
+        /* Contenido principal */
+        .content {
+            margin-left: 240px;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.3s ease;
+        }
+
+        /* Estado del contenido principal cuando el menú está colapsado */
+        .content.expanded-margin {
+            margin-left: 60px;
+        }
+        
+        .content-header {
+            padding: 30px;
+        }
+
+        .content-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .content-header p {
+            font-size: 15px;
+            color: #555;
+        }
+
+        .content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            flex-grow: 1;
+        }
+    </style>
 </head>
 <body>
+    <div class="sidebar">
+        <button id="menu-toggle" class="menu-toggle-button">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="sidebar-content">
+            <h2>Base pruebas 2.0</h2>
+            <h3>- Movimientos</h3>
+            <div class="usuario">
+                Usuario:<br>
+                <b>@Anonymous</b>
+            </div>
 
-    <header>
-        <h1>¡Hola, mundo!</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Inicio</a></li>
-                <li><a href="#">Acerca de</a></li>
-                <li><a href="#">Contacto</a></li>
-            </ul>
-        </nav>
-    </header>
+            <a onclick="loadContent('/alma.nsf/pTarjetas?OpenPage')">
+                <i class="fas fa-home"></i>Inicio
+            </a>
+            <a onclick="loadContent('/Alma.nsf/prueba01?OpenPage')">
+                <i class="fas fa-boxes-stacked"></i>Inventario
+            </a>
+            <a onclick="loadContent('/Alma.nsf/aa009?OpenPage')">
+                <i class="fas fa-exchange-alt"></i>Entradas / Salidas
+            </a>
+            <a onclick="loadContent('/Alma.nsf/pMovimientos?OpenPage')">
+                <i class="fas fa-chart-line"></i>Reportes
+            </a>
+ <a onclick="loadContent('/indep.nsf/cont?OpenFrameSet')">
+                <i class="fas fa-chart-line"></i>Indep
+            </a>
 
-    <main>
-        <section>
-            <h2>Bienvenido a mi sitio</h2>
-            <p>Esta es mi primera página web creada con HTML y CSS.</p>
-            <p>¡Espero que te guste!</p>
-            <img src="imagen.jpg" alt="Descripción de la imagen">
-        </section>
-    </main>
+ <a onclick="loadContent('/mbox.nsf/home?OpenFrameSet')">
+                <i class="fas fa-chart-line"></i>SMoving
+            </a>
 
-    <footer>
-        <p>&copy; 2023 Mi Página Web. Todos los derechos reservados.</p>
-    </footer>
+ <a onclick="loadContent('/Alma.nsf/proyecto?OpenFrameSet')">
+                <i class="fas fa-chart-line"></i>Proyecto
+            </a>
 
-    <script src="script.js"></script>
+            <a onclick="loadContent('/alma.nsf/subeExcelN?OpenPage')">
+                <i class="fas fa-upload"></i>Subir Datos
+            </a>
+        </div>
+    </div>
 
+    <div class="content">
+        <iframe id="main-content-frame" src="/alma.nsf/pTarjetas?OpenPage"></iframe>
+    </div>
+
+    <script>
+        // Lógica para el menú desplegable
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const content = document.querySelector('.content');
+
+            // Función para alternar el menú
+            function toggleMenu() {
+                sidebar.classList.toggle('collapsed');
+                content.classList.toggle('expanded-margin');
+            }
+
+            // Asigna el evento de clic al botón
+            menuToggle.addEventListener('click', toggleMenu);
+        });
+
+        // Función para cargar la vista en el iframe
+        function loadContent(viewName) {
+            const iframe = document.getElementById('main-content-frame');
+            iframe.src = viewName;
+        }
+    </script>
 </body>
 </html>
