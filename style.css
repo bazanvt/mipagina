@@ -1,0 +1,53 @@
+/* Estilos Generales para el cuerpo de la página */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9; /* Fondo gris muy claro */
+    color: #333; /* Color de texto oscuro */
+}
+
+/* Estilos para el encabezado (header) */
+header {
+    background-color: #007bff; /* Un azul brillante */
+    color: white;
+    padding: 1em 0;
+    text-align: center;
+}
+
+/* Estilos para la barra de navegación (nav) */
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin: 0 15px;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* Estilos para el contenido principal (main) */
+main {
+    padding: 20px;
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Sombra suave */
+}
+
+/* Estilos para el pie de página (footer) */
+footer {
+    text-align: center;
+    padding: 1em 0;
+    background-color: #333;
+    color: white;
+    margin-top: 20px;
+}
