@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Producto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #666;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        #success-message {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            color: #28a745;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #success-message.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Registrar Nuevo Producto</h3>
+        <form id="nuevo-producto-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="producto">Nombre del Producto</label>
+                    <input type="text" id="producto" required>
+                </div>
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <input type="text" id="color" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="medida">Medida</label>
+                    <input type="text" id="medida" required>
+                </div>
+                <div class="form-group">
+                    <label for="marca">Marca</label>
+                    <input type="text" id="marca" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="stock1">Stock Bodega 1</label>
+                    <input type="number" id="stock1" value="0" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="stock2">Stock Bodega 2</label>
+                    <input type="number" id="stock2" value="0" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="stock3">Stock Bodega 3</label>
+                    <input type="number" id="stock3" value="0" min="0" required>
+                </div>
+            </div>
+            <button type="submit" class="btn">Guardar Producto</button>
+        </form>
+        <div id="success-message">¡Producto guardado con éxito!</div>
+    </div>
+
+    <script>
+        const form = document.getElementById('nuevo-producto-form');
+        const successMessage = document.getElementById('success-message');
+        const serverUrl = 'http://movingcrm.mx/Alma.nsf';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            successMessage.classList.remove('visible');
+
+            const formData = new FormData();
+            formData.append('Form', 'articulo25');
+            formData.append('producto', document.getElementById('producto').value);
+            formData.append('color', document.getElementById('color').value);
+            formData.append('medida', document.getElementById('medida').value);
+            formData.append('marca', document.getElementById('marca').value);
+            formData.append('stock1', document.getElementById('stock1').value);
+            formData.append('stock2', document.getElementById('stock2').value);
+            formData.append('stock3', document.getElementById('stock3').value);
+
+            try {
+                const saveUrl = `${serverUrl}/articulo25?Createdocument`;
+                const response = await fetch(saveUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error al guardar el producto: ${response.status}`);
+                }
+                
+                // Mostrar mensaje de éxito
+                successMessage.classList.add('visible');
+
+                // Esperar 2 segundos, recargar la página principal y luego cerrar la ventana
+                setTimeout(() => {
+                    // Verificamos si la página principal existe antes de recargar
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.location.reload(); 
+                    }
+                    window.close();
+                }, 1000);
+                
+                console.log('Producto guardado con éxito y ventana cerrándose.');
+            } catch (error) {
+                console.error('Error al guardar el producto:', error);
+                alert('Hubo un error al procesar la solicitud. Revisa la consola para más detalles.');
+            }
+        });
+    </script>
+</body>
+</html>
