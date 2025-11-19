@@ -24,56 +24,70 @@
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Establecer el nivel de registro de Firebase (útil para depuración)
-        // setLogLevel('Debug'); // Comentar para producción si no se necesita
+        setLogLevel('Debug');
 
         let db, auth;
         let userId = null;
-        
+        let isFirebaseInitialized = false;
+
         // *****************************************************************************************
-        // ✅ CONFIGURACIÓN EXTERNA (OBLIGATORIA PARA GITHUB PAGES) - CLAVES ACTUALIZADAS
+        // CONFIGURACIÓN EXTERNA (Fallback para despliegue fuera de Canvas)
         // *****************************************************************************************
+        // Usamos la configuración que el usuario proporcionó.
         const EXTERNAL_FIREBASE_CONFIG = { 
             apiKey: "AIzaSyVLy4FdtxaJKW8TSM948fzwhH4_gAjmXk4", 
             authDomain: "enviaform-7a8a9.firebaseapp.com",
             projectId: "enviaform-7a8a9", 
         };
-        const EXTERNAL_APP_ID = 'enviaform-7a8a9'; // Usamos el Project ID como App ID
+        const EXTERNAL_APP_ID = 'enviaform-7a8a9';
 
-        // Determinar la configuración y el App ID
-        let firebaseConfig = null;
-        let appId = EXTERNAL_APP_ID;
+        // Determinar la configuración y el App ID (Priorizamos el entorno Canvas)
+        let firebaseConfig;
+        let appId;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        let isConfigured = false;
-        
+
         if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-            // Caso 1: Estamos en el entorno de Canvas (Variables disponibles)
+            // Caso 1: Entorno Canvas - Usar variables globales (siempre disponibles y correctas)
             try {
                 firebaseConfig = JSON.parse(__firebase_config);
                 appId = typeof __app_id !== 'undefined' ? __app_id : EXTERNAL_APP_ID;
-                isConfigured = true;
+                isFirebaseInitialized = true;
+                console.log("Usando configuración de Canvas.");
             } catch (e) {
-                console.error("Error al parsear __firebase_config en Canvas:", e);
-                // Fallback a configuración externa si el parseo falla
+                console.error("Error al parsear __firebase_config en Canvas. Cayendo a configuración externa.", e);
                 firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+                appId = EXTERNAL_APP_ID;
             }
         } else {
-            // Caso 2: Estamos en un entorno externo (GitHub Pages, etc.)
+            // Caso 2: Entorno Externo (GitHub Pages, etc.) - Usar configuración hardcodeada
             firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
-        }
+            appId = EXTERNAL_APP_ID;
 
-        // Verificar si la configuración externa fue actualizada
-        if (firebaseConfig.apiKey !== "TU_API_KEY_AQUI") {
-            isConfigured = true;
+            // Verificar si el usuario reemplazó las claves en modo externo (previniendo el error "TU_...")
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY_AQUI") {
+                 isFirebaseInitialized = true;
+                 console.log("Usando configuración externa provista por el usuario.");
+            } else {
+                 console.error("Configuración externa no definida o con placeholders. Firebase no se inicializará.");
+            }
         }
-
+        
         // Función de inicialización de Firebase
         async function initializeFirebase() {
-            try {
-                // 🛑 Verificar si el usuario reemplazó las claves en modo externo
-                if (firebaseConfig.apiKey === "TU_API_KEY_AQUI" && !initialAuthToken) {
-                    throw new Error("Configuración de Firebase incompleta para despliegue externo. Por favor, inserta tus claves en el código fuente.");
-                }
+            if (!isFirebaseInitialized) {
+                // Si la bandera es false, mostramos el mensaje de error de configuración.
+                console.error("Firebase no se puede inicializar debido a una configuración incompleta o faltante.");
+                document.getElementById('quotation-list').innerHTML = `
+                    <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
+                        <p class="font-bold">Error Crítico de Configuración:</p>
+                        <p class="text-sm">Las claves de Firebase no se encontraron o no se reemplazaron correctamente.</p>
+                        <p class="text-xs mt-2">Si estás en GitHub Pages, **DEBES** reemplazar las claves en el código fuente.</p>
+                    </div>
+                `;
+                return;
+            }
 
+            try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -93,25 +107,24 @@
                         document.getElementById('user-id-display').textContent = userId;
                     } else {
                         // Si falla la autenticación, se usa un ID temporal
-                        userId = 'anonymous-' + crypto.randomUUID().substring(0, 8); 
+                        userId = 'anonymous-' + (crypto.randomUUID ? crypto.randomUUID().substring(0, 8) : Date.now()); // Fallback para navegadores antiguos
                         document.getElementById('user-id-display').textContent = 'Anónimo';
                     }
                     console.log("App ID usado:", appId);
                     document.getElementById('app-id-display').textContent = appId;
+                    document.getElementById('config-status').innerHTML = `
+                        ✅ **CONFIGURACIÓN LISTA:** Las claves de Firebase se han configurado correctamente.
+                    `;
                     loadQuotations(); // Cargar los datos después de establecer el user ID
                 });
 
             } catch (error) {
                 console.error("Error al inicializar Firebase o durante la autenticación:", error);
-                const errorMessage = error.message.includes("Configuración de Firebase") 
-                    ? error.message 
-                    : "Error al conectar con la base de datos. (Ver consola para más detalles)";
-
+                // Mostrar un mensaje de error más genérico si la inicialización falla por otras razones
                 document.getElementById('quotation-list').innerHTML = `
                     <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
-                        <p class="font-bold">Error Crítico de Configuración:</p>
-                        <p class="text-sm">${errorMessage}</p>
-                        <p class="text-xs mt-2">Si estás en GitHub Pages, **DEBES** reemplazar las claves "TU_..." en el archivo HTML.</p>
+                        <p class="font-bold">Error de Conexión a Base de Datos:</p>
+                        <p class="text-sm">Hubo un error al intentar autenticar o conectar a Firestore. Revisa la Consola del Navegador y las reglas de seguridad de tu base de datos.</p>
                     </div>
                 `;
             }
@@ -124,7 +137,6 @@
             }
 
             // Ruta de la colección: /artifacts/{appId}/public/data/quotations
-            // Nota: Este appId debe coincidir con el usado en cotiza.html
             const collectionPath = `artifacts/${appId}/public/data/quotations`;
             const quotationsCollectionRef = collection(db, collectionPath);
             
@@ -139,7 +151,7 @@
                     const data = doc.data();
                     let parsedItems = [];
                     try {
-                        // El campo 'items' es un JSON string, lo parseamos a un objeto/array
+                        // El campo 'items' es un JSON string
                         parsedItems = JSON.parse(data.items || '[]');
                     } catch (e) {
                         console.error(`Error al parsear items de cotización ${doc.id}:`, e);
@@ -252,7 +264,7 @@
 
                             <!-- Botón de Eliminar -->
                             <button 
-                                onclick="deleteQuotation('${quote.id}', '${quote.name}')" 
+                                onclick="confirmDeleteQuotation('${quote.id}', '${quote.name}')" 
                                 class="bg-red-500 text-white p-2 rounded-lg text-sm font-medium hover:bg-red-600 transition duration-200 flex-shrink-0"
                             >
                                 Eliminar
@@ -279,46 +291,77 @@
                     updated_at: new Date()
                 });
                 console.log(`Estado de cotización ${id} actualizado a: ${newStatus}`);
+                document.getElementById('message-container').innerHTML = `<div class="p-3 bg-blue-100 text-blue-700 rounded-lg mb-2">Estado actualizado a: **${newStatus}**</div>`;
+                setTimeout(() => document.getElementById('message-container').innerHTML = '', 3000);
             } catch (error) {
                 console.error("Error al actualizar el estado:", error);
-                // Usamos una función simple de error en lugar de alert
-                document.getElementById('quotation-list').insertAdjacentHTML('afterbegin', `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">Error al actualizar: ${error.message}</div>`);
+                document.getElementById('message-container').innerHTML = `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">Error al actualizar el estado: ${error.message}</div>`;
+                setTimeout(() => document.getElementById('message-container').innerHTML = '', 5000);
             }
         };
 
-        // Función para eliminar una cotización
-        window.deleteQuotation = async function (id, name) {
-            const confirmation = confirm(`¿Estás seguro de que quieres eliminar la solicitud de ${name}? Escribe 'SÍ' para confirmar.`);
+        // Función de confirmación (no bloqueante) antes de llamar a deleteQuotation
+        window.confirmDeleteQuotation = function (id, name) {
+            const messageContainer = document.getElementById('message-container');
+            // Reemplazamos el botón de eliminar con una confirmación directa en la UI
             
-            if (confirmation) {
-                if (!db) {
-                    console.error("Base de datos no inicializada.");
-                    return;
-                }
-                const docRef = doc(db, `artifacts/${appId}/public/data/quotations`, id);
-                
-                try {
-                    await deleteDoc(docRef);
-                    console.log(`Cotización ${id} eliminada exitosamente.`);
-                } catch (error) {
-                    console.error("Error al eliminar la cotización:", error);
-                    // Usamos una función simple de error en lugar de alert
-                    document.getElementById('quotation-list').insertAdjacentHTML('afterbegin', `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">Error al eliminar: ${error.message}</div>`);
-                }
-            }
-        };
-
-        // Iniciar la aplicación de Firebase
-        if(isConfigured) {
-            initializeFirebase();
-        } else {
-            console.warn("Firebase no inicializado: Claves no encontradas.");
-            document.getElementById('quotation-list').innerHTML = `
-                <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
-                    <p class="font-bold">¡Atención! Falta Configuración de Firebase.</p>
-                    <p class="text-sm">Por favor, reemplaza "TU_API_KEY_AQUI" y "TU_DOMAIN_AQUI.firebaseapp.com" en el código fuente de este archivo.</p>
+            const confirmHtml = `
+                <div id="confirm-box" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+                        <p class="font-semibold text-gray-800 mb-4">¿Estás seguro de eliminar la solicitud de **${name}**?</p>
+                        <div class="flex justify-end gap-3">
+                            <button 
+                                onclick="document.getElementById('confirm-box').remove();"
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onclick="deleteQuotation('${id}', '${name}'); document.getElementById('confirm-box').remove();"
+                                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                            >
+                                Sí, Eliminar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
+            // Aseguramos que solo haya un cuadro de confirmación a la vez
+            if (!document.getElementById('confirm-box')) {
+                document.body.insertAdjacentHTML('beforeend', confirmHtml);
+            }
+        };
+
+        // Función para eliminar una cotización (llamada después de la confirmación)
+        window.deleteQuotation = async function (id, name) {
+            if (!db) {
+                console.error("Base de datos no inicializada.");
+                return;
+            }
+            
+            const docRef = doc(db, `artifacts/${appId}/public/data/quotations`, id);
+            const messageContainer = document.getElementById('message-container');
+            
+            try {
+                await deleteDoc(docRef);
+                console.log(`Cotización ${id} eliminada exitosamente.`);
+                
+                // Mostrar mensaje de éxito temporal
+                messageContainer.innerHTML = `<div class="p-3 bg-green-100 text-green-700 rounded-lg mb-2">✅ Solicitud de **${name}** eliminada exitosamente.</div>`;
+                setTimeout(() => messageContainer.innerHTML = '', 3000);
+                
+            } catch (error) {
+                console.error("Error al eliminar la cotización:", error);
+                
+                // Mostrar mensaje de error temporal
+                messageContainer.innerHTML = `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">❌ Error al eliminar: ${error.message}</div>`;
+                setTimeout(() => messageContainer.innerHTML = '', 5000);
+            }
+        };
+
+        // Iniciar la aplicación de Firebase si la configuración es válida
+        if(isFirebaseInitialized) {
+            initializeFirebase();
         }
     </script>
 </head>
@@ -343,11 +386,14 @@
                 <p>ID de Usuario Conectado: <span id="user-id-display" class="font-mono text-gray-600">Cargando...</span></p>
                 <p>App ID usado para Firestore: <span id="app-id-display" class="font-mono text-gray-600">Cargando...</span></p>
             </div>
-            <div class="mt-4 p-2 bg-yellow-50 rounded text-yellow-700 text-xs font-medium border border-yellow-200">
-                ✅ **CONFIGURACIÓN LISTA:** Las claves de Firebase se han configurado correctamente.
+            <div id="config-status" class="mt-4 p-2 bg-yellow-50 rounded text-yellow-700 text-xs font-medium border border-yellow-200">
+                Configuración de Firebase en proceso...
             </div>
         </div>
 
+        <!-- Contenedor para mensajes temporales (éxito/error) -->
+        <div id="message-container"></div>
+        
         <!-- Contenedor de la lista de cotizaciones -->
         <div id="quotation-list" class="space-y-4">
             <!-- Las cotizaciones se renderizarán aquí por JavaScript -->
@@ -362,14 +408,6 @@
     <footer class="mt-12 py-4 bg-gray-200 text-center text-gray-600 text-sm">
         Panel de Administración de Mudanzas Express.
     </footer>
-
-    <!-- Lógica para confirmación sin alert() -->
-    <script>
-        // Función de confirmación customizada para evitar window.confirm/alert
-        function confirm(message) {
-            return window.prompt(message) === 'SÍ';
-        }
-    </script>
 
 </body>
 </html>
