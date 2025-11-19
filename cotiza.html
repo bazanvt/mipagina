@@ -121,33 +121,36 @@
         setLogLevel('Debug');
 
         // =========================================================================================
-        // LÓGICA DE CONFIGURACIÓN DE FIREBASE: Prioriza las variables del entorno,
-        // pero usa las claves proporcionadas por el usuario como alternativa (fallback).
+        // LÓGICA DE CONFIGURACIÓN DE FIREBASE
         // =========================================================================================
 
-        const EXTERNAL_FIREBASE_CONFIG = {
+        // Claves externas proporcionadas por el usuario
+        const USER_FIREBASE_CONFIG = {
             apiKey: "AIzaSyVLy4FdtxaJKW8TSM948fzwhH4_gAjmXk4",
             authDomain: "enviaform-7a8a9.firebaseapp.com",
             projectId: "enviaform-7a8a9",
         };
-        const EXTERNAL_APP_ID = 'enviaform-7a8a9'; 
+        const USER_APP_ID = 'enviaform-7a8a9'; 
         
-        let appId = EXTERNAL_APP_ID;
-        let firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+        // Variables globales del entorno Canvas (MANDATORY)
+        const canvasAppId = typeof __app_id !== 'undefined' ? __app_id : null;
+        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Intentar usar las variables del entorno Canvas (las que garantizan el funcionamiento)
-        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        
+        let appId = USER_APP_ID;
+        let firebaseConfig = USER_FIREBASE_CONFIG;
+
+        // Intentar usar la configuración del entorno, sino usar la del usuario
         try {
-            const canvasConfig = JSON.parse(firebaseConfigRaw);
-            if (canvasConfig && canvasConfig.apiKey) {
-                // Si la configuración del entorno está presente y válida, la usamos
-                firebaseConfig = canvasConfig;
-                appId = typeof __app_id !== 'undefined' ? __app_id : EXTERNAL_APP_ID;
+            if (firebaseConfigRaw) {
+                const canvasConfig = JSON.parse(firebaseConfigRaw);
+                if (canvasConfig && canvasConfig.apiKey) {
+                    firebaseConfig = canvasConfig;
+                    appId = canvasAppId || USER_APP_ID;
+                }
             }
         } catch (e) {
-            console.warn("No se pudo parsear la configuración del entorno. Usando claves externas.");
+            console.warn("Error al parsear la configuración del entorno. Usando claves del usuario.");
         }
         
         // =========================================================================================
@@ -174,14 +177,13 @@
             // Mostrar App ID
             appIdDisplay.textContent = appId;
             
-            // 1. Verificar si la configuración de Firebase existe
-            if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
+            // 1. Verificar si la configuración de Firebase es válida
+            if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
                 loadingAuth.classList.add('hidden');
-                messageBox.textContent = "Error: La configuración de Firebase no está disponible. No se pueden guardar datos.";
+                messageBox.textContent = "Error: La configuración de Firebase es incompleta. No se puede conectar.";
                 messageBox.className = "text-red-600 bg-red-100 p-2 rounded-lg";
                 messageBox.style.display = 'block';
-                console.error("Firebase config no está disponible. La aplicación se ejecutará sin conexión a la base de datos.");
-                return; // Detener la ejecución si no hay conexión
+                return;
             }
 
             // 2. Si la configuración existe, proceder con la inicialización
@@ -190,11 +192,11 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Autenticación: Usar token de Canvas o iniciar anónimamente
+                // Autenticación: Usar token de Canvas (si existe) o iniciar anónimamente
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    await signInAnonymously(auth);
+                    await signInAnonymously(auth); 
                 }
 
                 // Listener de estado de autenticación
@@ -214,12 +216,11 @@
                         console.log(`Usuario autenticado. UID: ${userId}`);
 
                     } else {
-                        // En este entorno, si no hay user.uid, es un problema.
-                        console.error("Error de Autenticación: No se pudo obtener el UID del usuario.");
+                        console.error("Error de Autenticación: onAuthStateChanged falló.");
                         userId = 'ERROR_AUTH';
                         userIdDisplay.textContent = userId;
                         
-                        messageBox.textContent = "Error de Autenticación. No se pueden guardar datos.";
+                        messageBox.textContent = "Error: Falló la autenticación. Por favor, verifica las Reglas de Firebase Auth (Autenticación Anónima).";
                         messageBox.className = "text-red-600 bg-red-100 p-2 rounded-lg";
                         messageBox.style.display = 'block';
                     }
@@ -228,6 +229,7 @@
             } catch (error) {
                 console.error("Error al inicializar o autenticar Firebase:", error);
                 loadingAuth.classList.add('hidden');
+                // Mostrar el error específico
                 messageBox.textContent = `Error crítico de Firebase: ${error.message}`;
                 messageBox.className = "text-red-600 bg-red-100 p-2 rounded-lg";
                 messageBox.style.display = 'block';
@@ -262,8 +264,7 @@
             saveButton.textContent = 'Guardando...';
             messageBox.style.display = 'none';
 
-            // Ruta de la colección: /artifacts/{appId}/users/{userId}/quotations
-            // Nota: Aquí se usa el 'appId' que puede ser el del entorno o 'enviaform-7a8a9'.
+            // Ruta de la colección: /artifacts/{appId}/users/{userId}/quotations (Datos Privados)
             const quotesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/quotations`);
 
             const newQuotation = {
@@ -284,7 +285,12 @@
                 formElement.reset(); // Limpiar formulario
             } catch (error) {
                 console.error("Error al añadir el documento a Firestore:", error);
-                messageBox.textContent = `Error al guardar: ${error.message}`;
+                // Si el error es de permiso, lo mostramos claramente
+                let errorMessage = `Error al guardar: ${error.message}`;
+                if (error.code === 'permission-denied') {
+                    errorMessage = 'Error de Permiso Denegado. Por favor, verifica las Reglas de Seguridad de Firestore.';
+                }
+                messageBox.textContent = errorMessage;
                 messageBox.className = "text-red-600 bg-red-100 p-2 rounded-lg";
                 messageBox.style.display = 'block';
             } finally {
@@ -350,7 +356,11 @@
                 }
             }, (error) => {
                 console.error("Error al escuchar cotizaciones:", error);
-                quotationsList.innerHTML = `<p class="text-center text-red-500 italic">Error al cargar cotizaciones: ${error.message}</p>`;
+                let errorMessage = `Error al cargar cotizaciones: ${error.message}`;
+                if (error.code === 'permission-denied') {
+                    errorMessage = 'Error de Permiso Denegado. Revisa las Reglas de Seguridad de Firestore.';
+                }
+                quotationsList.innerHTML = `<p class="text-center text-red-500 italic">${errorMessage}</p>`;
             });
         }
 
