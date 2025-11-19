@@ -60,13 +60,14 @@
             </a>
             <!-- Menú de Navegación (visible en escritorio) -->
             <nav id="desktop-menu" class="hidden md:block">
-                <ul class="flex space-x-6">
+                <ul class="flex space-x-6 items-center">
                     <li><a href="#inicio" class="text-gray-600 hover:text-primary font-medium transition duration-300">Inicio</a></li>
                     <li><a href="#servicios" class="text-gray-600 hover:text-primary font-medium transition duration-300">Servicios</a></li>
-                    <!-- ENLACE A PÁGINA EXTERNA DE CALIDAD -->
                     <li><a href="calidad_servicio.html" class="text-gray-600 hover:text-primary font-medium transition duration-300 font-extrabold">Calidad en el Servicio</a></li>
                     <!-- ENLACE A COTIZA.HTML -->
                     <li><a href="cotiza.html" class="text-gray-900 hover:text-primary font-bold transition duration-300 bg-yellow-100 rounded-full px-3 py-1">Cotizar</a></li>
+                    <!-- ENLACE AL PANEL DE COTIZACIONES (MUY VISIBLE) -->
+                    <li><a href="panel_cotizaciones.html" class="text-white hover:bg-red-700 font-bold transition duration-300 bg-red-600 rounded-full px-3 py-1 shadow-md">ADMIN</a></li>
                     <li><a href="#ubicacion" class="text-gray-600 hover:text-primary font-medium transition duration-300">Ubicación</a></li>
                     <li><a href="#contacto" class="text-gray-600 hover:text-primary font-medium transition duration-300">Contacto</a></li>
                 </ul>
@@ -88,6 +89,8 @@
                 <li><a href="calidad_servicio.html" class="block p-2 text-gray-900 hover:bg-gray-100 rounded-lg font-bold border-l-4 border-yellow-500 bg-yellow-50">Calidad en el Servicio</a></li>
                 <!-- ENLACE A PÁGINA EXTERNA DE COTIZA.HTML -->
                 <li><a href="cotiza.html" class="block p-2 text-primary hover:bg-gray-100 rounded-lg font-bold border-l-4 border-primary">Cotizar</a></li>
+                <!-- NUEVO ENLACE AL PANEL DE COTIZACIONES (MUY VISIBLE EN MÓVIL) -->
+                <li><a href="panel_cotizaciones.html" class="block p-2 text-red-600 hover:bg-red-100 rounded-lg font-bold border-l-4 border-red-600 bg-red-50">Panel ADMIN</a></li>
                 <li><a href="#ubicacion" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Ubicación</a></li>
                 <li><a href="#contacto" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Contacto</a></li>
             </ul>
@@ -233,7 +236,7 @@
                 <a href="#servicios" class="hover:text-primary transition duration-300">Servicios</a>
                 <!-- ENLACE A COTIZA.HTML -->
                 <a href="cotiza.html" class="hover:text-primary transition duration-300">Cotizar</a>
-                <!-- ENLACE AL PANEL DE COTIZACIONES -->
+                <!-- ENLACE AL PANEL DE COTIZACIONES (Menos visible aquí, pero funcional) -->
                 <a href="panel_cotizaciones.html" class="hover:text-yellow-500 transition duration-300 font-bold">PANEL DE COTIZACIONES (Admin)</a>
                 <a href="#" class="hover:text-primary transition duration-300">Aviso de Privacidad</a>
             </div>
