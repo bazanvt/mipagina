@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotización de Mudanza - Mudanzas Express</title>
+    <!-- Carga de Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuraciones de fuente y fondo */
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            background-color: #f7f7f7;
+        }
+        /* Color principal de la marca: Un azul fuerte (confianza) */
+        .brand-primary { background-color: #3b82f6; }
+        .text-primary { color: #3b82f6; }
+
+        /* Estilo para los botones de selección (tipo de mudanza) */
+        .radio-tile-group input[type="radio"]:checked + .radio-tile {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #1e40af;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.5);
+        }
+        .radio-tile {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .radio-tile:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+    </style>
+    <!-- Biblioteca para simular la descarga/conversión a PDF/Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- 1. BARRA DE NAVEGACIÓN (HEADER) -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <!-- Logo/Marca -->
+            <a href="index.html#inicio" class="text-2xl font-bold text-primary hover:text-blue-700 transition duration-300">
+                MUDANZAS EXPRESS
+            </a>
+            <!-- Menú de Navegación -->
+            <nav id="desktop-menu">
+                <ul class="flex space-x-6">
+                    <li><a href="index.html" class="text-gray-600 hover:text-primary font-medium transition duration-300">← Volver a Inicio</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 2. CONTENIDO DEL FORMULARIO DE COTIZACIÓN -->
+    <main class="py-12 md:py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-center mb-4 text-gray-800">
+                Calcula tu Mudanza
+            </h1>
+            <p class="text-xl text-center text-gray-600 mb-10">
+                Completa los pasos para obtener tu cotización preliminar.
+            </p>
+
+            <form id="cotizacion-form" class="bg-white p-6 sm:p-10 rounded-xl shadow-2xl space-y-8 border-t-8 border-yellow-500">
+                
+                <!-- PASO 1: DATOS PERSONALES Y TIPO DE MUDANZA -->
+                <div id="step-1">
+                    <h2 class="text-2xl font-bold mb-4 text-primary border-b pb-2">1. Datos y Tipo de Servicio</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" placeholder="Nombre Completo" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="email" placeholder="Correo Electrónico" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="tel" placeholder="Teléfono" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="date" id="fechaMudanza" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                    </div>
+
+                    <label class="block text-lg font-semibold mt-6 mb-2 text-gray-700">Tipo de Mudanza</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 radio-tile-group">
+                        <!-- Opciones de Tipo de Mudanza -->
+                        <label for="tipoLocal" class="block">
+                            <input type="radio" id="tipoLocal" name="tipoMudanza" value="Local" required class="hidden">
+                            <div class="radio-tile p-3 text-center border-2 border-gray-300 rounded-lg">
+                                <span class="font-medium text-sm md:text-base">Local</span>
+                            </div>
+                        </label>
+                        <label for="tipoForanea" class="block">
+                            <input type="radio" id="tipoForanea" name="tipoMudanza" value="Foránea" required class="hidden">
+                            <div class="radio-tile p-3 text-center border-2 border-gray-300 rounded-lg">
+                                <span class="font-medium text-sm md:text-base">Foránea</span>
+                            </div>
+                        </label>
+                        <label for="tipoCasa" class="block">
+                            <input type="radio" id="tipoCasa" name="tipoInmueble" value="Casa" required class="hidden">
+                            <div class="radio-tile p-3 text-center border-2 border-gray-300 rounded-lg">
+                                <span class="font-medium text-sm md:text-base">Casa / Depto.</span>
+                            </div>
+                        </label>
+                        <label for="tipoOficina" class="block">
+                            <input type="radio" id="tipoOficina" name="tipoInmueble" value="Oficina" required class="hidden">
+                            <div class="radio-tile p-3 text-center border-2 border-gray-300 rounded-lg">
+                                <span class="font-medium text-sm md:text-base">Oficina</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- PASO 2: MÉTODO DE CÁLCULO DE VOLUMEN -->
+                <div id="step-2">
+                    <h2 class="text-2xl font-bold mb-4 text-primary border-b pb-2">2. ¿Cómo calculamos el volumen?</h2>
+                    
+                    <label class="block text-lg font-semibold mt-6 mb-2 text-gray-700">Elige una opción:</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label for="opcionVisita" class="flex items-center p-4 bg-yellow-50 rounded-lg border-2 border-yellow-300 cursor-pointer">
+                            <input type="radio" id="opcionVisita" name="metodoVolumen" value="Visita" class="form-radio h-5 w-5 text-primary">
+                            <span class="ml-3 text-gray-800 font-medium">Solicitar Visita (Recomendado para grandes mudanzas)</span>
+                        </label>
+                        <label for="opcionMenaje" class="flex items-center p-4 bg-blue-50 rounded-lg border-2 border-blue-300 cursor-pointer">
+                            <input type="radio" id="opcionMenaje" name="metodoVolumen" value="Menaje" class="form-radio h-5 w-5 text-primary">
+                            <span class="ml-3 text-gray-800 font-medium">Crear Lista de Menaje / Subir Archivo</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- SECCIÓN A: VISITA (Oculta por defecto) -->
+                <div id="seccionVisita" class="hidden bg-red-50 p-6 rounded-xl border-2 border-red-300">
+                    <h3 class="text-xl font-bold mb-4 text-red-700">A. Agendar Visita Técnica</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="fechaVisita" class="block text-sm font-medium text-gray-700">Fecha de Visita Preferida</label>
+                            <input type="date" id="fechaVisita" class="w-full px-4 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500">
+                        </div>
+                        <div>
+                            <label for="horaVisita" class="block text-sm font-medium text-gray-700">Hora de Visita Preferida</label>
+                            <input type="time" id="horaVisita" class="w-full px-4 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500">
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm text-red-600">Nos pondremos en contacto para confirmar disponibilidad.</p>
+                </div>
+
+                <!-- SECCIÓN B: MENAJE (Oculta por defecto) -->
+                <div id="seccionMenaje" class="hidden bg-green-50 p-6 rounded-xl border-2 border-green-300">
+                    <h3 class="text-xl font-bold mb-4 text-green-700">B. Detalle del Menaje</h3>
+                    
+                    <!-- Opción 1: Inventario por Categorías -->
+                    <div class="bg-white p-4 rounded-lg shadow mb-6">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-3">1. Inventario por Categorías</h4>
+                        <div id="inventario-list" class="space-y-4">
+                            <!-- JS llenará esta sección -->
+                        </div>
+                    </div>
+
+                    <!-- Opción 2: Subir Archivo -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-3">2. Subir Inventario (Excel / CSV)</h4>
+                        <input type="file" id="uploadMenaje" accept=".xlsx, .xls, .csv" class="w-full p-2 border rounded-lg text-gray-600">
+                        <p class="text-xs text-gray-500 mt-2">Sube tu lista para un cálculo rápido. **Nota:** La cotización será preliminar y sujeta a revisión.</p>
+                    </div>
+                </div>
+
+                <!-- PASO FINAL: BOTONES DE ACCIÓN -->
+                <div id="step-final" class="pt-6 border-t border-gray-200">
+                    <div id="mensajeCotizacion" class="hidden text-center p-3 mb-4 rounded-lg text-lg font-semibold text-green-700 bg-green-100">
+                        ¡Cotización simulada enviada con éxito!
+                    </div>
+
+                    <button type="button" id="btnEnviarCotizacion" class="w-full brand-primary text-white py-3 rounded-lg text-xl font-bold hover:bg-blue-700 transition duration-300 mb-3">
+                        Enviar Solicitud y Obtener Cotización Preliminar
+                    </button>
+                    
+                    <button type="button" id="btnDescargarCotizacion" class="w-full bg-gray-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-gray-700 transition duration-300">
+                        Descargar Borrador de Inventario (Excel)
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </main>
+
+    <!-- 3. PIE DE PÁGINA (FOOTER) -->
+    <footer class="bg-gray-900 text-white py-8 mt-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="mb-2">&copy; 2025 Mudanzas Express. Todos los derechos reservados.</p>
+            <a href="index.html#contacto" class="hover:text-primary transition duration-300 text-sm">Volver al Contacto General</a>
+        </div>
+    </footer>
+
+    <!-- LÓGICA JAVASCRIPT -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const opcionVisita = document.getElementById('opcionVisita');
+            const opcionMenaje = document.getElementById('opcionMenaje');
+            const seccionVisita = document.getElementById('seccionVisita');
+            const seccionMenaje = document.getElementById('seccionMenaje');
+            const inventarioList = document.getElementById('inventario-list');
+            const btnEnviar = document.getElementById('btnEnviarCotizacion');
+            const btnDescargar = document.getElementById('btnDescargarCotizacion');
+            const form = document.getElementById('cotizacion-form');
+            const mensajeCotizacion = document.getElementById('mensajeCotizacion');
+
+            // --- Estructura del Menaje ---
+            const menajeCategorias = {
+                "Sala y Comedor": [
+                    { nombre: "Sofá 3 Plazas", cajas: 0 },
+                    { nombre: "Mesa de Centro", cajas: 0 },
+                    { nombre: "Silla de Comedor", cajas: 0 },
+                    { nombre: "Televisor (Empacado)", cajas: 1 }
+                ],
+                "Cocina": [
+                    { nombre: "Refrigerador (mediano)", cajas: 0 },
+                    { nombre: "Microondas", cajas: 1 },
+                    { nombre: "Cajas con Vajilla/Cristalería", cajas: 5 },
+                    { nombre: "Lavadora", cajas: 0 }
+                ],
+                "Dormitorio Principal": [
+                    { nombre: "Cama King Size (desarmada)", cajas: 0 },
+                    { nombre: "Cómoda / Cajonera", cajas: 0 },
+                    { nombre: "Buro / Mesa de Noche", cajas: 0 },
+                    { nombre: "Cajas con Ropa/Objetos Personales", cajas: 8 }
+                ],
+                "Otros": [
+                    { nombre: "Bicicleta", cajas: 0 },
+                    { nombre: "Cajas Varias Grandes", cajas: 3 },
+                    { nombre: "Herramientas de Jardín", cajas: 2 }
+                ]
+            };
+
+            // --- Función para inicializar el Inventario en el DOM ---
+            const renderMenajeInventario = () => {
+                inventarioList.innerHTML = ''; // Limpiar
+                for (const categoria in menajeCategorias) {
+                    // Contenedor de la categoría
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'border border-gray-200 p-4 rounded-lg';
+                    
+                    // Título de la categoría
+                    const h5 = document.createElement('h5');
+                    h5.className = 'text-base font-bold text-gray-800 mb-2 border-b pb-1';
+                    h5.textContent = categoria;
+                    catDiv.appendChild(h5);
+
+                    // Lista de artículos
+                    menajeCategorias[categoria].forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'flex justify-between items-center py-1';
+                        
+                        const label = document.createElement('span');
+                        label.textContent = item.nombre;
+                        label.className = 'text-sm text-gray-700';
+                        itemDiv.appendChild(label);
+
+                        const inputContainer = document.createElement('div');
+                        inputContainer.className = 'flex items-center';
+                        
+                        // Input de Cantidad
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.min = '0';
+                        input.value = '0';
+                        input.className = 'w-16 p-1 border rounded-lg text-right text-sm';
+                        input.setAttribute('data-item', item.nombre);
+                        input.setAttribute('data-categoria', categoria);
+                        input.addEventListener('change', (e) => item.cantidad = parseInt(e.target.value) || 0);
+
+                        inputContainer.appendChild(input);
+                        itemDiv.appendChild(inputContainer);
+                        catDiv.appendChild(itemDiv);
+                    });
+
+                    inventarioList.appendChild(catDiv);
+                }
+            };
+
+            // --- Lógica para mostrar/ocultar secciones ---
+            const handleMetodoChange = () => {
+                if (opcionVisita.checked) {
+                    seccionVisita.classList.remove('hidden');
+                    seccionMenaje.classList.add('hidden');
+                } else if (opcionMenaje.checked) {
+                    seccionMenaje.classList.remove('hidden');
+                    seccionVisita.classList.add('hidden');
+                    // Renderiza el inventario si se selecciona Menaje
+                    renderMenajeInventario();
+                } else {
+                    seccionVisita.classList.add('hidden');
+                    seccionMenaje.classList.add('hidden');
+                }
+            };
+
+            opcionVisita.addEventListener('change', handleMetodoChange);
+            opcionMenaje.addEventListener('change', handleMetodoChange);
+
+            // --- Lógica de Envío de Solicitud (Simulación) ---
+            btnEnviar.addEventListener('click', () => {
+                if (form.checkValidity()) {
+                    // SIMULACIÓN: Enviar datos y mostrar mensaje de éxito
+                    mensajeCotizacion.classList.remove('hidden');
+                    // Aquí iría el código real para enviar la cotización a un servidor (Firebase/API)
+                    console.log("Datos de cotización recolectados:", {
+                        tipoMudanza: document.querySelector('input[name="tipoMudanza"]:checked')?.value,
+                        tipoInmueble: document.querySelector('input[name="tipoInmueble"]:checked')?.value,
+                        fechaMudanza: document.getElementById('fechaMudanza').value,
+                        metodoVolumen: document.querySelector('input[name="metodoVolumen"]:checked')?.value,
+                        datosVisita: opcionVisita.checked ? {
+                            fecha: document.getElementById('fechaVisita').value,
+                            hora: document.getElementById('horaVisita').value
+                        } : null,
+                        datosMenaje: opcionMenaje.checked ? menajeCategorias : null
+                        // Faltaría incluir la lógica del Excel subido
+                    });
+
+                    // Opcional: Deshabilitar el formulario después del envío
+                    // form.querySelectorAll('input, button, textarea').forEach(el => el.disabled = true);
+                } else {
+                    // Disparar la validación nativa del navegador
+                    form.reportValidity();
+                }
+            });
+
+            // --- Lógica de Descarga de Inventario (Excel) ---
+            btnDescargar.addEventListener('click', () => {
+                // Crear un array de datos para el archivo Excel
+                let data = [["Categoría", "Artículo", "Cantidad Estimada"]];
+
+                for (const categoria in menajeCategorias) {
+                    menajeCategorias[categoria].forEach(item => {
+                        // Usar 0 si no se ha modificado el valor o es nulo
+                        const cantidad = item.cantidad !== undefined ? item.cantidad : 0;
+                        data.push([categoria, item.nombre, cantidad]);
+                    });
+                }
+                
+                // Generar la hoja de cálculo
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Inventario de Menaje");
+
+                // Escribir y descargar el archivo
+                XLSX.writeFile(wb, "Borrador_Menaje_Mudanza_Express.xlsx");
+            });
+
+            // Inicialización (Asegura que las secciones estén ocultas al cargar)
+            seccionVisita.classList.add('hidden');
+            seccionMenaje.classList.add('hidden');
+        });
+    </script>
+
+</body>
+</html>
