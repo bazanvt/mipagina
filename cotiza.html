@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador y Guardado de Cotizaciones</title>
+    <!-- Carga de Tailwind CSS para un diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de la fuente Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">Generador de Cotizaciones</h1>
+
+        <!-- Mensajes de Estado y Errores -->
+        <div id="status-message" class="hidden p-4 rounded-lg mb-4 text-sm font-medium"></div>
+
+        <div id="loading-spinner" class="text-center py-8 hidden">
+            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-gray-600 ml-2">Cargando aplicación...</span>
+        </div>
+
+        <!-- Formulario de Cotización -->
+        <form id="quotation-form" class="space-y-4 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Campo Nombre del Cliente -->
+                <div>
+                    <label for="clientName" class="block text-sm font-medium text-gray-700">Nombre del Cliente</label>
+                    <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <!-- Campo Correo Electrónico -->
+                <div>
+                    <label for="clientEmail" class="block text-sm font-medium text-gray-700">Correo Electrónico (Opcional)</label>
+                    <input type="email" id="clientEmail" name="clientEmail" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+            </div>
+
+            <!-- Campo Descripción del Servicio/Producto -->
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Descripción del Servicio/Producto</label>
+                <textarea id="description" name="description" rows="3" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+            </div>
+
+            <!-- Campo Monto -->
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-700">Monto Total ($)</label>
+                <input type="number" id="amount" name="amount" required step="0.01" min="0.01" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <!-- Botón de Envío -->
+            <button type="submit" id="submit-button" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Guardar Cotización
+            </button>
+        </form>
+
+        <!-- Listado de Cotizaciones en Tiempo Real -->
+        <div class="mt-10 pt-6 border-t">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Cotizaciones Guardadas (En Tiempo Real)</h2>
+            <div id="quotations-list" class="space-y-3">
+                <p class="text-gray-500" id="empty-message">No hay cotizaciones guardadas aún.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script de Firebase y Lógica de la Aplicación -->
+    <script type="module">
+        // Importación de módulos necesarios de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Variables Globales Proporcionadas por el Entorno ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Elementos del DOM
+        const form = document.getElementById('quotation-form');
+        const listContainer = document.getElementById('quotations-list');
+        const statusMessage = document.getElementById('status-message');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const emptyMessage = document.getElementById('empty-message');
+
+        let db;
+        let auth;
+        let userId;
+
+        /**
+         * Muestra un mensaje de estado temporal al usuario.
+         * @param {string} message El mensaje a mostrar.
+         * @param {string} type El tipo de mensaje ('success' o 'error').
+         */
+        function displayStatus(message, type = 'success') {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                statusMessage.classList.add('bg-green-100', 'text-green-700');
+            }
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * Inicializa Firebase, autentica al usuario y configura los listeners.
+         */
+        async function initializeAppAndAuth() {
+            loadingSpinner.classList.remove('hidden');
+
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                displayStatus("Error: La configuración de Firebase no está disponible.", 'error');
+                loadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                // Opcional: Para ver logs detallados de Firestore
+                // setLogLevel('Debug');
+
+                // Escucha cambios en el estado de autenticación
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log(`Usuario autenticado con UID: ${userId}`);
+                        // Muestra el formulario una vez que la autenticación está lista
+                        form.classList.remove('hidden');
+                        loadingSpinner.classList.add('hidden');
+                        loadQuotations(); // Carga las cotizaciones
+                    } else {
+                        // Intenta iniciar sesión con el token personalizado o de forma anónima
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Error al autenticar:", error);
+                            displayStatus("Error al iniciar sesión en Firebase. Intente recargar.", 'error');
+                            loadingSpinner.classList.add('hidden');
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al inicializar la aplicación de Firebase:", error);
+                displayStatus(`Error de inicialización: ${error.message}`, 'error');
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Maneja el envío del formulario y guarda la cotización en Firestore.
+         * @param {Event} e El evento de envío del formulario.
+         */
+        async function saveQuotation(e) {
+            e.preventDefault();
+
+            if (!db || !userId) {
+                displayStatus("La aplicación no está lista o no hay usuario autenticado.", 'error');
+                return;
+            }
+
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Guardando...';
+
+            // Recolección de datos del formulario
+            const clientName = document.getElementById('clientName').value.trim();
+            const clientEmail = document.getElementById('clientEmail').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            // Validación simple
+            if (!clientName || !description || isNaN(amount) || amount <= 0) {
+                displayStatus("Por favor, complete todos los campos requeridos (Nombre, Descripción, Monto > 0).", 'error');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Guardar Cotización';
+                return;
+            }
+
+            // Construcción del objeto de cotización
+            const newQuotation = {
+                clientName: clientName,
+                clientEmail: clientEmail || 'N/A',
+                description: description,
+                amount: amount,
+                userId: userId, // Identificador del usuario que crea la cotización
+                createdAt: serverTimestamp() // Marca de tiempo del servidor
+            };
+
+            // Ruta de la colección pública (recomendada para datos compartidos en este entorno)
+            const collectionPath = `/artifacts/${appId}/public/data/cotizaciones`;
+
+            try {
+                // Guarda el documento en Firestore
+                await addDoc(collection(db, collectionPath), newQuotation);
+
+                displayStatus("Cotización guardada exitosamente.", 'success');
+                form.reset(); // Limpia el formulario
+            } catch (error) {
+                console.error("Error al guardar la cotización:", error);
+                displayStatus(`Error al guardar: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Guardar Cotización';
+            }
+        }
+
+        /**
+         * Configura el listener de tiempo real (onSnapshot) para las cotizaciones.
+         */
+        function loadQuotations() {
+            if (!db) return;
+
+            // Ruta de la colección (debe coincidir con la de saveQuotation)
+            const collectionPath = `/artifacts/${appId}/public/data/cotizaciones`;
+            const q = query(collection(db, collectionPath));
+
+            // onSnapshot proporciona actualizaciones en tiempo real
+            onSnapshot(q, (snapshot) => {
+                listContainer.innerHTML = ''; // Limpiar lista existente
+                const quotations = [];
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    quotations.push({ id: doc.id, ...data });
+                });
+
+                if (quotations.length === 0) {
+                    emptyMessage.classList.remove('hidden');
+                } else {
+                    emptyMessage.classList.add('hidden');
+                    // Ordenar las cotizaciones por fecha de creación (si está disponible)
+                    quotations.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
+                    quotations.forEach(quotation => {
+                        const date = quotation.createdAt ? new Date(quotation.createdAt.seconds * 1000).toLocaleDateString('es-ES') : 'Fecha desconocida';
+
+                        const item = document.createElement('div');
+                        item.className = 'p-4 border border-gray-200 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition duration-150 ease-in-out';
+                        item.innerHTML = `
+                            <p class="text-lg font-semibold text-indigo-700">${quotation.clientName}</p>
+                            <p class="text-gray-600 truncate">${quotation.description}</p>
+                            <div class="mt-2 flex justify-between items-center text-sm">
+                                <span class="font-bold text-gray-800">$${quotation.amount.toFixed(2)}</span>
+                                <span class="text-gray-500">${date}</span>
+                            </div>
+                            <span class="text-xs text-gray-400 block mt-1">ID: ${quotation.id}</span>
+                        `;
+                        listContainer.appendChild(item);
+                    });
+                }
+
+            }, (error) => {
+                console.error("Error al escuchar cotizaciones:", error);
+                // Si ocurre un error después de la carga inicial, notifica al usuario
+                if (listContainer.childElementCount === 0) {
+                    listContainer.innerHTML = '<p class="text-red-500">Error al cargar la lista de cotizaciones.</p>';
+                }
+            });
+        }
+
+        // --- Inicialización y Event Listeners ---
+        initializeAppAndAuth();
+        form.addEventListener('submit', saveQuotation);
+    </script>
+</body>
+</html>
