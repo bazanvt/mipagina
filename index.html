@@ -63,9 +63,9 @@
                 <ul class="flex space-x-6">
                     <li><a href="#inicio" class="text-gray-600 hover:text-primary font-medium transition duration-300">Inicio</a></li>
                     <li><a href="#servicios" class="text-gray-600 hover:text-primary font-medium transition duration-300">Servicios</a></li>
-                    <!-- NUEVO ENLACE A PÁGINA EXTERNA -->
-                    <li><a href="calidad.html" class="text-gray-600 hover:text-primary font-medium transition duration-300 font-extrabold">Calidad</a></li>
-                    <li><a href="#precios" class="text-gray-600 hover:text-primary font-medium transition duration-300">Precios</a></li>
+                    <!-- ENLACE A PÁGINA EXTERNA DE CALIDAD -->
+                    <li><a href="calidad_servicio.html" class="text-gray-600 hover:text-primary font-medium transition duration-300 font-extrabold">Calidad en el Servicio</a></li>
+                    <li><a href="cotizacion.html" class="text-gray-900 hover:text-primary font-bold transition duration-300 bg-yellow-100 rounded-full px-3 py-1">Cotizar</a></li>
                     <li><a href="#ubicacion" class="text-gray-600 hover:text-primary font-medium transition duration-300">Ubicación</a></li>
                     <li><a href="#contacto" class="text-gray-600 hover:text-primary font-medium transition duration-300">Contacto</a></li>
                 </ul>
@@ -83,9 +83,10 @@
             <ul class="flex flex-col p-4 space-y-2">
                 <li><a href="#inicio" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Inicio</a></li>
                 <li><a href="#servicios" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Servicios</a></li>
-                <!-- NUEVO ENLACE A PÁGINA EXTERNA -->
-                <li><a href="calidad.html" class="block p-2 text-gray-900 hover:bg-gray-100 rounded-lg font-bold border-l-4 border-yellow-500 bg-yellow-50">Calidad</a></li>
-                <li><a href="#precios" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Precios</a></li>
+                <!-- ENLACE A PÁGINA EXTERNA DE CALIDAD -->
+                <li><a href="calidad_servicio.html" class="block p-2 text-gray-900 hover:bg-gray-100 rounded-lg font-bold border-l-4 border-yellow-500 bg-yellow-50">Calidad en el Servicio</a></li>
+                <!-- ENLACE A PÁGINA EXTERNA DE COTIZACIÓN -->
+                <li><a href="cotizacion.html" class="block p-2 text-primary hover:bg-gray-100 rounded-lg font-bold border-l-4 border-primary">Cotizar</a></li>
                 <li><a href="#ubicacion" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Ubicación</a></li>
                 <li><a href="#contacto" class="block p-2 text-gray-600 hover:bg-gray-100 rounded-lg">Contacto</a></li>
             </ul>
@@ -101,7 +102,8 @@
             <p class="text-xl sm:text-2xl mb-8 font-light">
                 Somos tu solución confiable y profesional para mudanzas residenciales y corporativas a nivel nacional.
             </p>
-            <a href="#contacto" class="inline-block px-10 py-4 bg-yellow-500 text-gray-900 text-lg font-bold rounded-full shadow-lg hover:bg-yellow-400 transition duration-300 transform hover:scale-105">
+            <!-- ENLACE MODIFICADO A LA PÁGINA DE COTIZACIÓN -->
+            <a href="cotizacion.html" class="inline-block px-10 py-4 bg-yellow-500 text-gray-900 text-lg font-bold rounded-full shadow-lg hover:bg-yellow-400 transition duration-300 transform hover:scale-105">
                 Pide tu Cotización Ahora
             </a>
         </div>
@@ -153,7 +155,8 @@
                 <p class="text-2xl font-semibold">¡Obtén un presupuesto gratuito y sin compromiso!</p>
                 <p class="text-sm mt-2">Dinos qué necesitas mover y a dónde, y te daremos una cotización en 24 horas.</p>
             </div>
-            <a href="#contacto" class="block w-full sm:w-auto mx-auto mt-8 px-8 py-3 bg-red-500 text-white text-xl font-bold rounded-full hover:bg-red-600 transition duration-300">
+            <!-- ENLACE MODIFICADO A LA PÁGINA DE COTIZACIÓN -->
+            <a href="cotizacion.html" class="block w-full sm:w-auto mx-auto mt-8 px-8 py-3 bg-red-500 text-white text-xl font-bold rounded-full hover:bg-red-600 transition duration-300">
                 ¡Solicitar Presupuesto!
             </a>
         </div>
@@ -199,7 +202,7 @@
             <h2 class="text-4xl font-bold text-center mb-4 text-white">Contáctanos Hoy Mismo</h2>
             <p class="text-xl text-center mb-10 text-blue-100">Llámanos o llena el formulario para empezar tu cotización.</p>
 
-            <!-- Formulario de Contacto -->
+            <!-- Formulario de Contacto (Esto es solo para preguntas generales, la cotización va a su propia página) -->
             <form action="#" method="POST" class="bg-white p-8 rounded-xl shadow-2xl space-y-4">
                 <div>
                     <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
@@ -210,11 +213,11 @@
                     <input type="email" id="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
                 </div>
                 <div>
-                    <label for="mensaje" class="block text-sm font-medium text-gray-700">Detalles de la Mudanza (Origen, Destino, Volumen)</label>
+                    <label for="mensaje" class="block text-sm font-medium text-gray-700">Mensaje General o Pregunta</label>
                     <textarea id="mensaje" name="mensaje" rows="4" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
                 </div>
                 <button type="submit" class="w-full brand-primary text-white py-3 rounded-lg text-lg font-bold hover:bg-blue-700 transition duration-300">
-                    Enviar Solicitud
+                    Enviar Mensaje
                 </button>
                 <p class="text-center text-sm text-gray-600 mt-4">También puedes llamarnos al: <span class="font-bold text-primary">[55] 1234 5678</span></p>
             </form>
@@ -227,14 +230,13 @@
             <p class="mb-2">&copy; 2025 Mudanzas Express. Todos los derechos reservados.</p>
             <div class="space-x-4 text-sm">
                 <a href="#servicios" class="hover:text-primary transition duration-300">Servicios</a>
-                <a href="#contacto" class="hover:text-primary transition duration-300">Cotizar</a>
+                <a href="cotizacion.html" class="hover:text-primary transition duration-300">Cotizar</a>
                 <a href="#" class="hover:text-primary transition duration-300">Aviso de Privacidad</a>
             </div>
         </div>
     </footer>
 
     <!-- BOTÓN FLOTANTE DE WHATSAPP -->
-    <!-- Ícono de WhatsApp, color amarillo y efecto de latido. -->
     <a href="https://wa.me/525512345678?text=Hola,%20me%20gustaría%20solicitar%20una%20cotización%20de%20mudanza." 
        target="_blank" 
        class="fixed bottom-6 right-6 z-50 bg-yellow-500 p-4 rounded-full shadow-xl transition duration-300 transform animate-pulse-beat"
