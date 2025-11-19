@@ -6,6 +6,7 @@
     <title>Cotización de Mudanza - Mudanzas Express</title>
     <!-- Carga de Tailwind CSS para un diseño moderno y responsivo -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Configuraciones de fuente y fondo */
         body {
@@ -32,12 +33,46 @@
             border-color: #3b82f6;
             transform: translateY(-2px);
         }
+        /* Estilos para mensajes de feedback */
+        .message-box {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: none; /* Inicialmente oculto */
+            font-weight: 600;
+        }
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        .message-box.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #f87171;
+        }
+        /* Spinner */
+        .spinner {
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <!-- Biblioteca para simular la descarga/conversión a PDF/Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
+
+    <!-- Contenedor para mensajes flotantes (éxito/error) -->
+    <div id="alertBox" class="message-box transition duration-300 ease-in-out"></div>
 
     <!-- 1. BARRA DE NAVEGACIÓN (HEADER) -->
     <header class="bg-white shadow-md sticky top-0 z-50">
@@ -71,9 +106,9 @@
                 <div id="step-1">
                     <h2 class="text-2xl font-bold mb-4 text-primary border-b pb-2">1. Datos y Tipo de Servicio</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" placeholder="Nombre Completo" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
-                        <input type="email" placeholder="Correo Electrónico" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
-                        <input type="tel" placeholder="Teléfono" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="text" id="nombre" placeholder="Nombre Completo" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="email" id="email" placeholder="Correo Electrónico" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                        <input type="tel" id="telefono" placeholder="Teléfono" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
                         <input type="date" id="fechaMudanza" required class="w-full px-4 py-2 border rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
                     </div>
 
@@ -162,12 +197,9 @@
 
                 <!-- PASO FINAL: BOTONES DE ACCIÓN -->
                 <div id="step-final" class="pt-6 border-t border-gray-200">
-                    <div id="mensajeCotizacion" class="hidden text-center p-3 mb-4 rounded-lg text-lg font-semibold text-green-700 bg-green-100">
-                        ¡Cotización simulada enviada con éxito!
-                    </div>
-
-                    <button type="button" id="btnEnviarCotizacion" class="w-full brand-primary text-white py-3 rounded-lg text-xl font-bold hover:bg-blue-700 transition duration-300 mb-3">
-                        Enviar Solicitud y Obtener Cotización Preliminar
+                    <button type="button" id="btnEnviarCotizacion" class="w-full brand-primary text-white py-3 rounded-lg text-xl font-bold hover:bg-blue-700 transition duration-300 mb-3 flex items-center justify-center" disabled>
+                        <span id="buttonText">Cargando Conexión...</span>
+                        <div id="spinner" class="spinner border-4 border-blue-200 h-6 w-6 ml-3 hidden"></div>
                     </button>
                     
                     <button type="button" id="btnDescargarCotizacion" class="w-full bg-gray-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-gray-700 transition duration-300">
@@ -187,161 +219,256 @@
         </div>
     </footer>
 
-    <!-- LÓGICA JAVASCRIPT -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const opcionVisita = document.getElementById('opcionVisita');
-            const opcionMenaje = document.getElementById('opcionMenaje');
-            const seccionVisita = document.getElementById('seccionVisita');
-            const seccionMenaje = document.getElementById('seccionMenaje');
-            const inventarioList = document.getElementById('inventario-list');
-            const btnEnviar = document.getElementById('btnEnviarCotizacion');
-            const btnDescargar = document.getElementById('btnDescargarCotizacion');
-            const form = document.getElementById('cotizacion-form');
-            const mensajeCotizacion = document.getElementById('mensajeCotizacion');
+    <!-- LÓGICA JAVASCRIPT Y FIREBASE -->
+    <script type="module">
+        // Importación de módulos de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-            // --- Estructura del Menaje ---
-            const menajeCategorias = {
-                "Sala y Comedor": [
-                    { nombre: "Sofá 3 Plazas", cajas: 0 },
-                    { nombre: "Mesa de Centro", cajas: 0 },
-                    { nombre: "Silla de Comedor", cajas: 0 },
-                    { nombre: "Televisor (Empacado)", cajas: 1 }
-                ],
-                "Cocina": [
-                    { nombre: "Refrigerador (mediano)", cajas: 0 },
-                    { nombre: "Microondas", cajas: 1 },
-                    { nombre: "Cajas con Vajilla/Cristalería", cajas: 5 },
-                    { nombre: "Lavadora", cajas: 0 }
-                ],
-                "Dormitorio Principal": [
-                    { nombre: "Cama King Size (desarmada)", cajas: 0 },
-                    { nombre: "Cómoda / Cajonera", cajas: 0 },
-                    { nombre: "Buro / Mesa de Noche", cajas: 0 },
-                    { nombre: "Cajas con Ropa/Objetos Personales", cajas: 8 }
-                ],
-                "Otros": [
-                    { nombre: "Bicicleta", cajas: 0 },
-                    { nombre: "Cajas Varias Grandes", cajas: 3 },
-                    { nombre: "Herramientas de Jardín", cajas: 2 }
-                ]
-            };
+        // Habilitar logs de depuración para Firestore
+        setLogLevel('Debug');
 
-            // --- Función para inicializar el Inventario en el DOM ---
-            const renderMenajeInventario = () => {
-                inventarioList.innerHTML = ''; // Limpiar
-                for (const categoria in menajeCategorias) {
-                    // Contenedor de la categoría
-                    const catDiv = document.createElement('div');
-                    catDiv.className = 'border border-gray-200 p-4 rounded-lg';
+        // Configuración de Firebase (Tus claves reales)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyLY4FdtxaJKW8TSM948FzwH4_gAJmXk4",
+            authDomain: "enviaform-7a8a9.firebaseapp.com",
+            projectId: "enviaform-7a8a9",
+            storageBucket: "enviaform-7a8a9.appspot.com",
+            messagingSenderId: "179011303738",
+            appId: "1:179011303738:web:7157662c19958045648839"
+        };
+        
+        // Inicialización de Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Referencias del DOM
+        const opcionVisita = document.getElementById('opcionVisita');
+        const opcionMenaje = document.getElementById('opcionMenaje');
+        const seccionVisita = document.getElementById('seccionVisita');
+        const seccionMenaje = document.getElementById('seccionMenaje');
+        const inventarioList = document.getElementById('inventario-list');
+        const btnEnviar = document.getElementById('btnEnviarCotizacion');
+        const btnDescargar = document.getElementById('btnDescargarCotizacion');
+        const form = document.getElementById('cotizacion-form');
+        const alertBox = document.getElementById('alertBox');
+        const buttonText = document.getElementById('buttonText');
+        const spinner = document.getElementById('spinner');
+
+        // --- Estructura del Menaje (Global para que sea modificable) ---
+        const menajeCategorias = {
+            "Sala y Comedor": [
+                { nombre: "Sofá 3 Plazas", cantidad: 0, cajas: 0 },
+                { nombre: "Mesa de Centro", cantidad: 0, cajas: 0 },
+                { nombre: "Silla de Comedor", cantidad: 0, cajas: 0 },
+                { nombre: "Televisor (Empacado)", cantidad: 0, cajas: 1 }
+            ],
+            "Cocina": [
+                { nombre: "Refrigerador (mediano)", cantidad: 0, cajas: 0 },
+                { nombre: "Microondas", cantidad: 0, cajas: 1 },
+                { nombre: "Cajas con Vajilla/Cristalería", cantidad: 0, cajas: 5 },
+                { nombre: "Lavadora", cantidad: 0, cajas: 0 }
+            ],
+            "Dormitorio Principal": [
+                { nombre: "Cama King Size (desarmada)", cantidad: 0, cajas: 0 },
+                { nombre: "Cómoda / Cajonera", cantidad: 0, cajas: 0 },
+                { nombre: "Buro / Mesa de Noche", cantidad: 0, cajas: 0 },
+                { nombre: "Cajas con Ropa/Objetos Personales", cantidad: 0, cajas: 8 }
+            ],
+            "Otros": [
+                { nombre: "Bicicleta", cantidad: 0, cajas: 0 },
+                { nombre: "Cajas Varias Grandes", cantidad: 0, cajas: 3 },
+                { nombre: "Herramientas de Jardín", cantidad: 0, cajas: 2 }
+            ]
+        };
+
+        // --- Función para inicializar el Inventario en el DOM ---
+        const renderMenajeInventario = () => {
+            inventarioList.innerHTML = ''; // Limpiar
+            for (const categoria in menajeCategorias) {
+                const catDiv = document.createElement('div');
+                catDiv.className = 'border border-gray-200 p-4 rounded-lg';
+                
+                const h5 = document.createElement('h5');
+                h5.className = 'text-base font-bold text-gray-800 mb-2 border-b pb-1';
+                h5.textContent = categoria;
+                catDiv.appendChild(h5);
+
+                menajeCategorias[categoria].forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'flex justify-between items-center py-1';
                     
-                    // Título de la categoría
-                    const h5 = document.createElement('h5');
-                    h5.className = 'text-base font-bold text-gray-800 mb-2 border-b pb-1';
-                    h5.textContent = categoria;
-                    catDiv.appendChild(h5);
+                    const label = document.createElement('span');
+                    label.textContent = item.nombre;
+                    label.className = 'text-sm text-gray-700';
+                    itemDiv.appendChild(label);
 
-                    // Lista de artículos
-                    menajeCategorias[categoria].forEach(item => {
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'flex justify-between items-center py-1';
-                        
-                        const label = document.createElement('span');
-                        label.textContent = item.nombre;
-                        label.className = 'text-sm text-gray-700';
-                        itemDiv.appendChild(label);
-
-                        const inputContainer = document.createElement('div');
-                        inputContainer.className = 'flex items-center';
-                        
-                        // Input de Cantidad
-                        const input = document.createElement('input');
-                        input.type = 'number';
-                        input.min = '0';
-                        input.value = '0';
-                        input.className = 'w-16 p-1 border rounded-lg text-right text-sm';
-                        input.setAttribute('data-item', item.nombre);
-                        input.setAttribute('data-categoria', categoria);
-                        input.addEventListener('change', (e) => item.cantidad = parseInt(e.target.value) || 0);
-
-                        inputContainer.appendChild(input);
-                        itemDiv.appendChild(inputContainer);
-                        catDiv.appendChild(itemDiv);
+                    const inputContainer = document.createElement('div');
+                    inputContainer.className = 'flex items-center';
+                    
+                    // Input de Cantidad
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = '0';
+                    input.value = item.cantidad.toString(); // Usar la cantidad del objeto
+                    input.className = 'w-16 p-1 border rounded-lg text-right text-sm focus:ring-green-500 focus:border-green-500';
+                    
+                    // Actualizar el objeto global menajeCategorias al cambiar el valor
+                    input.addEventListener('change', (e) => {
+                        item.cantidad = parseInt(e.target.value) || 0;
                     });
 
-                    inventarioList.appendChild(catDiv);
-                }
+                    inputContainer.appendChild(input);
+                    itemDiv.appendChild(inputContainer);
+                    catDiv.appendChild(itemDiv);
+                });
+
+                inventarioList.appendChild(catDiv);
+            }
+        };
+
+        // --- Lógica para mostrar/ocultar secciones ---
+        const handleMetodoChange = () => {
+            if (opcionVisita.checked) {
+                seccionVisita.classList.remove('hidden');
+                seccionMenaje.classList.add('hidden');
+            } else if (opcionMenaje.checked) {
+                seccionMenaje.classList.remove('hidden');
+                seccionVisita.classList.add('hidden');
+                // Renderiza el inventario si se selecciona Menaje
+                renderMenajeInventario();
+            } else {
+                seccionVisita.classList.add('hidden');
+                seccionMenaje.classList.add('hidden');
+            }
+        };
+        
+        // --- Función para mostrar mensajes flotantes ---
+        function showMessage(message, type) {
+            alertBox.textContent = message;
+            alertBox.className = 'message-box transition duration-300 ease-in-out ' + type;
+            alertBox.style.display = 'block';
+            
+            // Ocultar después de 5 segundos
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 7000);
+        }
+
+        // --- 1. Manejo de autenticación anónima ---
+        async function authenticateUser() {
+            try {
+                // Usamos persistencia de sesión
+                await setPersistence(auth, browserSessionPersistence);
+                const userCredential = await signInAnonymously(auth);
+                
+                btnEnviar.disabled = false; // Habilita el botón de envío
+                buttonText.textContent = "Enviar Solicitud y Obtener Cotización Preliminar";
+            } catch (error) {
+                console.error("Error en la autenticación anónima:", error);
+                buttonText.textContent = "Error de Conexión. Recarga.";
+                showMessage("Error de conexión. Consulta la consola.", "error");
+            }
+        }
+        
+        // --- 2. Función principal para enviar los datos a Firestore ---
+        async function enviarCotizacionAFirestore(event) {
+            event.preventDefault(); // Evita el envío por defecto
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            // Deshabilitar botón y mostrar spinner
+            btnEnviar.disabled = true;
+            buttonText.textContent = "Enviando Solicitud...";
+            spinner.classList.remove('hidden');
+
+            // 1. Recolección de Datos
+            const metodoVolumen = document.querySelector('input[name="metodoVolumen"]:checked')?.value;
+            
+            const cotizacion = {
+                // Paso 1: Datos Personales
+                nombre: document.getElementById('nombre').value,
+                email: document.getElementById('email').value,
+                telefono: document.getElementById('telefono').value,
+                fechaMudanza: document.getElementById('fechaMudanza').value,
+                tipoMudanza: document.querySelector('input[name="tipoMudanza"]:checked')?.value,
+                tipoInmueble: document.querySelector('input[name="tipoInmueble"]:checked')?.value,
+                
+                // Paso 2: Método de Cálculo
+                metodoVolumen: metodoVolumen,
+                
+                // Datos Condicionales
+                datosVisita: metodoVolumen === 'Visita' ? {
+                    fecha: document.getElementById('fechaVisita').value,
+                    hora: document.getElementById('horaVisita').value
+                } : null,
+                
+                datosMenaje: metodoVolumen === 'Menaje' ? menajeCategorias : null,
+
+                // Archivo subido (se ignorará aquí, ya que requeriría Storage)
+                archivoSubido: document.getElementById('uploadMenaje').files.length > 0 ? "Archivo adjunto pendiente de manejo" : null,
+
+                // Metadata
+                fechaSolicitud: serverTimestamp(),
+                estado: 'Nueva Solicitud'
             };
 
-            // --- Lógica para mostrar/ocultar secciones ---
-            const handleMetodoChange = () => {
-                if (opcionVisita.checked) {
-                    seccionVisita.classList.remove('hidden');
-                    seccionMenaje.classList.add('hidden');
-                } else if (opcionMenaje.checked) {
-                    seccionMenaje.classList.remove('hidden');
-                    seccionVisita.classList.add('hidden');
-                    // Renderiza el inventario si se selecciona Menaje
-                    renderMenajeInventario();
-                } else {
-                    seccionVisita.classList.add('hidden');
-                    seccionMenaje.classList.add('hidden');
-                }
-            };
+            try {
+                // Añadir el documento a la colección 'solicitudes'
+                await addDoc(collection(db, "solicitudes"), cotizacion);
+                
+                console.log("Cotización escrita exitosamente en Firestore!");
+                
+                // Mostrar éxito y limpiar el formulario
+                showMessage("¡Cotización enviada con éxito! Te contactaremos pronto.", "success");
+                form.reset(); // Limpia todos los campos
 
+            } catch (e) {
+                console.error("Error al añadir el documento: ", e);
+                showMessage("¡Error al enviar! Por favor, verifica tu conexión e inténtalo de nuevo.", "error");
+            } finally {
+                // Restaurar el estado del botón
+                btnEnviar.disabled = false;
+                buttonText.textContent = "Enviar Solicitud y Obtener Cotización Preliminar";
+                spinner.classList.add('hidden');
+            }
+        }
+        
+        // --- 3. Asignación de Eventos ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar la autenticación
+            authenticateUser();
+
+            // Lógica de mostrar/ocultar secciones
             opcionVisita.addEventListener('change', handleMetodoChange);
             opcionMenaje.addEventListener('change', handleMetodoChange);
 
-            // --- Lógica de Envío de Solicitud (Simulación) ---
-            btnEnviar.addEventListener('click', () => {
-                if (form.checkValidity()) {
-                    // SIMULACIÓN: Enviar datos y mostrar mensaje de éxito
-                    mensajeCotizacion.classList.remove('hidden');
-                    // Aquí iría el código real para enviar la cotización a un servidor (Firebase/API)
-                    console.log("Datos de cotización recolectados:", {
-                        tipoMudanza: document.querySelector('input[name="tipoMudanza"]:checked')?.value,
-                        tipoInmueble: document.querySelector('input[name="tipoInmueble"]:checked')?.value,
-                        fechaMudanza: document.getElementById('fechaMudanza').value,
-                        metodoVolumen: document.querySelector('input[name="metodoVolumen"]:checked')?.value,
-                        datosVisita: opcionVisita.checked ? {
-                            fecha: document.getElementById('fechaVisita').value,
-                            hora: document.getElementById('horaVisita').value
-                        } : null,
-                        datosMenaje: opcionMenaje.checked ? menajeCategorias : null
-                        // Faltaría incluir la lógica del Excel subido
-                    });
+            // Asignar el listener de Firebase al botón principal
+            btnEnviar.addEventListener('click', enviarCotizacionAFirestore);
 
-                    // Opcional: Deshabilitar el formulario después del envío
-                    // form.querySelectorAll('input, button, textarea').forEach(el => el.disabled = true);
-                } else {
-                    // Disparar la validación nativa del navegador
-                    form.reportValidity();
-                }
-            });
-
-            // --- Lógica de Descarga de Inventario (Excel) ---
+            // --- Lógica de Descarga de Inventario (Excel) - Sin cambios ---
             btnDescargar.addEventListener('click', () => {
-                // Crear un array de datos para el archivo Excel
                 let data = [["Categoría", "Artículo", "Cantidad Estimada"]];
-
                 for (const categoria in menajeCategorias) {
                     menajeCategorias[categoria].forEach(item => {
-                        // Usar 0 si no se ha modificado el valor o es nulo
                         const cantidad = item.cantidad !== undefined ? item.cantidad : 0;
                         data.push([categoria, item.nombre, cantidad]);
                     });
                 }
                 
-                // Generar la hoja de cálculo
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Inventario de Menaje");
-
-                // Escribir y descargar el archivo
                 XLSX.writeFile(wb, "Borrador_Menaje_Mudanza_Express.xlsx");
             });
 
-            // Inicialización (Asegura que las secciones estén ocultas al cargar)
+            // Inicialización visual (Asegura que las secciones estén ocultas al cargar)
             seccionVisita.classList.add('hidden');
             seccionMenaje.classList.add('hidden');
         });
