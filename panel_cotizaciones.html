@@ -3,259 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Cotizaciones - Mudanzas Express</title>
-    <!-- Carga de Tailwind CSS -->
+    <title>Panel de Cotizaciones (Admin)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7;
+            background-color: #f3f4f6;
         }
-        .text-primary { color: #3b82f6; }
-        .loader {
-            border-top-color: #3b82f6;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .header-bg { background-color: #1f2937; } /* Gris oscuro para el header */
+        .brand-primary { color: #3b82f6; } /* Azul de la marca */
     </style>
-    <!-- Importaciones de Firebase Firestore y Auth -->
+    <!-- Firebase SDKs -->
     <script type="module">
+        // Importar las funciones de Firebase necesarias
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Establecer el nivel de registro de Firebase (útil para depuración)
+        // setLogLevel('Debug'); // Comentar para producción si no se necesita
+
+        let db, auth;
+        let userId = null;
         
-        // Configuración global de Firebase
-        setLogLevel('Debug');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // *****************************************************************************************
+        // ✅ CONFIGURACIÓN EXTERNA (OBLIGATORIA PARA GITHUB PAGES) - CLAVES ACTUALIZADAS
+        // *****************************************************************************************
+        const EXTERNAL_FIREBASE_CONFIG = { 
+            apiKey: "AIzaSyVLy4FdtxaJKW8TSM948fzwhH4_gAjmXk4", 
+            authDomain: "enviaform-7a8a9.firebaseapp.com",
+            projectId: "enviaform-7a8a9", 
+        };
+        const EXTERNAL_APP_ID = 'enviaform-7a8a9'; // Usamos el Project ID como App ID
 
-        let app, db, auth;
-        let userId = 'anonymous';
-
-        // Inicializar Firebase y Autenticar
-        const initializeFirebase = async () => {
-            if (Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase Configuración no disponible.");
-                document.getElementById('loading-message').textContent = "Error: Configuración de Firebase no disponible.";
-                return;
-            }
+        // Determinar la configuración y el App ID
+        let firebaseConfig = null;
+        let appId = EXTERNAL_APP_ID;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let isConfigured = false;
+        
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            // Caso 1: Estamos en el entorno de Canvas (Variables disponibles)
             try {
-                app = initializeApp(firebaseConfig);
+                firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : EXTERNAL_APP_ID;
+                isConfigured = true;
+            } catch (e) {
+                console.error("Error al parsear __firebase_config en Canvas:", e);
+                // Fallback a configuración externa si el parseo falla
+                firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+            }
+        } else {
+            // Caso 2: Estamos en un entorno externo (GitHub Pages, etc.)
+            firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+        }
+
+        // Verificar si la configuración externa fue actualizada
+        if (firebaseConfig.apiKey !== "TU_API_KEY_AQUI") {
+            isConfigured = true;
+        }
+
+        // Función de inicialización de Firebase
+        async function initializeFirebase() {
+            try {
+                // 🛑 Verificar si el usuario reemplazó las claves en modo externo
+                if (firebaseConfig.apiKey === "TU_API_KEY_AQUI" && !initialAuthToken) {
+                    throw new Error("Configuración de Firebase incompleta para despliegue externo. Por favor, inserta tus claves en el código fuente.");
+                }
+
+                const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+                // 1. Manejo de autenticación inicial
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
+                    // Para despliegue público, usamos autenticación anónima si no hay token
                     await signInAnonymously(auth);
                 }
-                
-                userId = auth.currentUser?.uid || 'no-auth';
-                console.log("Firebase inicializado. User ID:", userId);
-                
-                // Una vez autenticado, iniciamos la escucha de las cotizaciones
-                if (userId !== 'no-auth') {
-                    startRealtimeListener(db, appId, userId);
-                } else {
-                    document.getElementById('loading-message').textContent = "Error: No se pudo obtener el User ID para cargar las cotizaciones.";
-                    document.getElementById('loader').classList.add('hidden');
-                }
 
-            } catch (error) {
-                console.error("Error al inicializar Firebase o autenticar:", error);
-                document.getElementById('loading-message').textContent = `Error de autenticación: ${error.message}`;
-                document.getElementById('loader').classList.add('hidden');
-            }
-        };
-
-        // --- Función para iniciar la escucha de cotizaciones en tiempo real ---
-        const startRealtimeListener = (db, appId, userId) => {
-            const cotizacionesContainer = document.getElementById('cotizaciones-container');
-            const loadingMessage = document.getElementById('loading-message');
-            const loader = document.getElementById('loader');
-
-            // Ruta de colección: /artifacts/{appId}/users/{userId}/cotizaciones
-            const collectionPath = `artifacts/${appId}/users/${userId}/cotizaciones`;
-            const cotizacionesRef = collection(db, collectionPath);
-            const q = query(cotizacionesRef); // Puedes añadir .orderBy() aquí, pero se recomienda ordenar en el frontend para evitar errores de índice en Firestore
-
-            // onSnapshot crea una conexión en tiempo real
-            onSnapshot(q, (snapshot) => {
-                loader.classList.add('hidden');
-                cotizacionesContainer.innerHTML = ''; // Limpiar el contenedor
-                loadingMessage.classList.add('hidden');
-
-                if (snapshot.empty) {
-                    cotizacionesContainer.innerHTML = '<p class="text-xl text-gray-500 text-center p-8">Aún no hay cotizaciones guardadas. ¡Prueba enviando una!</p>';
-                    return;
-                }
-
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    data.id = doc.id;
-                    renderCotizacionCard(data, cotizacionesContainer);
+                // 2. Establecer el listener de estado de autenticación
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id-display').textContent = userId;
+                    } else {
+                        // Si falla la autenticación, se usa un ID temporal
+                        userId = 'anonymous-' + crypto.randomUUID().substring(0, 8); 
+                        document.getElementById('user-id-display').textContent = 'Anónimo';
+                    }
+                    console.log("App ID usado:", appId);
+                    document.getElementById('app-id-display').textContent = appId;
+                    loadQuotations(); // Cargar los datos después de establecer el user ID
                 });
 
-                document.getElementById('total-cotizaciones').textContent = snapshot.docs.length;
-            }, (error) => {
-                console.error("Error al escuchar cotizaciones:", error);
-                loadingMessage.textContent = `Error de conexión: ${error.message}`;
-                loader.classList.add('hidden');
-            });
-        };
+            } catch (error) {
+                console.error("Error al inicializar Firebase o durante la autenticación:", error);
+                const errorMessage = error.message.includes("Configuración de Firebase") 
+                    ? error.message 
+                    : "Error al conectar con la base de datos. (Ver consola para más detalles)";
 
-        // --- Función para renderizar cada tarjeta de cotización ---
-        const renderCotizacionCard = (data, container) => {
-            const card = document.createElement('div');
-            card.className = 'bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500 hover:shadow-xl transition duration-300';
-            
-            // Determinar si es Visita o Menaje
-            const isVisita = data.metodoVolumen === 'Visita';
-            const detailKey = isVisita ? 'fechaVisita' : 'inventarioManual';
-            
-            let detalleContent = '';
-            if (isVisita) {
-                detalleContent = `
-                    <p class="mt-2 text-sm text-red-700 font-semibold">Visita Agendada: ${data.detalleVolumen.fechaVisita} a las ${data.detalleVolumen.horaVisita}</p>
-                `;
-            } else if (data.detalleVolumen.inventarioManual && Array.isArray(data.detalleVolumen.inventarioManual)) {
-                // Si hay inventario manual, mostrar un resumen
-                const totalItems = data.detalleVolumen.inventarioManual.reduce((acc, item) => acc + item.cantidad, 0);
-                detalleContent = `
-                    <p class="mt-2 text-sm text-green-700 font-semibold">Detalle Menaje: ${totalItems} artículos listados manualmente.</p>
-                `;
-            } else if (data.detalleVolumen.archivoSubido && data.detalleVolumen.archivoSubido !== 'N/A') {
-                // Si hay archivo subido, mostrar su estado
-                detalleContent = `
-                    <p class="mt-2 text-sm text-blue-700 font-semibold">Detalle Menaje: Archivo Excel/CSV subido (${data.detalleVolumen.archivoSubido.length} filas).</p>
-                `;
-            } else {
-                 detalleContent = `
-                    <p class="mt-2 text-sm text-gray-500">Sin detalle de menaje (Solo datos iniciales).</p>
+                document.getElementById('quotation-list').innerHTML = `
+                    <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
+                        <p class="font-bold">Error Crítico de Configuración:</p>
+                        <p class="text-sm">${errorMessage}</p>
+                        <p class="text-xs mt-2">Si estás en GitHub Pages, **DEBES** reemplazar las claves "TU_..." en el archivo HTML.</p>
+                    </div>
                 `;
             }
+        }
 
+        // Función para cargar las cotizaciones en tiempo real
+        function loadQuotations() {
+            if (!db || !userId) {
+                return;
+            }
 
-            card.innerHTML = `
-                <div class="flex justify-between items-start border-b pb-2 mb-2">
-                    <h3 class="text-xl font-bold text-gray-800">${data.cliente.nombre}</h3>
-                    <span class="text-xs font-medium px-3 py-1 rounded-full ${data.estado === 'Pendiente' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                        ${data.estado}
-                    </span>
-                </div>
-                <p class="text-gray-600 mb-1">Email: <a href="mailto:${data.cliente.email}" class="text-primary hover:underline">${data.cliente.email}</a></p>
-                <p class="text-gray-600 mb-1">Teléfono: ${data.cliente.telefono}</p>
-                <p class="text-gray-600 mb-3">Fecha Mudanza: ${data.mudanza.fechaMudanza || 'N/A'}</p>
+            // Ruta de la colección: /artifacts/{appId}/public/data/quotations
+            // Nota: Este appId debe coincidir con el usado en cotiza.html
+            const collectionPath = `artifacts/${appId}/public/data/quotations`;
+            const quotationsCollectionRef = collection(db, collectionPath);
+            
+            const q = query(quotationsCollectionRef); 
 
-                <div class="text-sm bg-gray-50 p-3 rounded-lg">
-                    <p class="font-semibold text-gray-700">Tipo de Servicio:</p>
-                    <p class="text-gray-600">${data.mudanza.tipoMudanza} / ${data.mudanza.tipoInmueble}</p>
-                    <p class="font-semibold text-gray-700 mt-2">Método de Volumen:</p>
-                    <p class="text-gray-600">${data.metodoVolumen} ${detalleContent}</p>
-                </div>
-                <div class="mt-4 text-right">
-                    <button onclick="verDetalle('${data.id}', this)" class="text-sm text-primary hover:text-blue-700 font-semibold transition duration-300">
-                        Ver Detalle Completo
-                    </button>
-                </div>
-                <div id="detalle-${data.id}" class="hidden mt-4 pt-4 border-t border-gray-200">
-                    <!-- Aquí se cargará el JSON completo del documento -->
-                    <pre class="bg-gray-800 text-white p-3 rounded-lg overflow-x-auto text-xs"></pre>
+            console.log("Iniciando listener en tiempo real. Path:", collectionPath);
+
+            // onSnapshot crea un listener en tiempo real
+            onSnapshot(q, (snapshot) => {
+                const quotations = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    let parsedItems = [];
+                    try {
+                        // El campo 'items' es un JSON string, lo parseamos a un objeto/array
+                        parsedItems = JSON.parse(data.items || '[]');
+                    } catch (e) {
+                        console.error(`Error al parsear items de cotización ${doc.id}:`, e);
+                    }
+
+                    quotations.push({
+                        id: doc.id,
+                        ...data,
+                        items: parsedItems
+                    });
+                });
+
+                // Ordenar en el lado del cliente por la marca de tiempo (timestamp) más reciente
+                quotations.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+                renderQuotations(quotations);
+            }, (error) => {
+                console.error("Error al obtener las cotizaciones:", error);
+                document.getElementById('quotation-list').innerHTML = `
+                    <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
+                        <p class="font-bold">Error de Acceso a Firestore:</p>
+                        <p class="text-sm">No se pudieron cargar los datos. Revisa tus reglas de seguridad de Firestore y la Consola del Navegador.</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Función para renderizar la lista de cotizaciones
+        function renderQuotations(quotations) {
+            const listElement = document.getElementById('quotation-list');
+            listElement.innerHTML = ''; // Limpiar la lista actual
+
+            if (quotations.length === 0) {
+                listElement.innerHTML = `
+                    <div class="p-8 text-center bg-white rounded-xl shadow-lg mt-4">
+                        <p class="text-xl text-gray-500">No hay solicitudes de cotización pendientes.</p>
+                        <p class="text-sm text-gray-400 mt-2">Los clientes pueden solicitar una cotización desde <a href="cotiza.html" class="text-blue-500 hover:underline">la página de cotización</a>.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            quotations.forEach(quote => {
+                const date = quote.timestamp ? new Date(quote.timestamp.seconds * 1000).toLocaleString() : 'N/A';
+                
+                let statusClasses = 'bg-yellow-100 text-yellow-800';
+                let statusText = 'Pendiente';
+                if (quote.status === 'En Proceso') {
+                    statusClasses = 'bg-blue-100 text-blue-800';
+                    statusText = 'En Proceso';
+                } else if (quote.status === 'Completada') {
+                    statusClasses = 'bg-green-100 text-green-800';
+                    statusText = 'Completada';
+                }
+
+                // Generar lista detallada de items
+                let itemsList = quote.items.map(item => `
+                    <li class="flex justify-between items-center text-sm border-b border-gray-100 py-1">
+                        <span class="text-gray-600">${item.name}</span>
+                        <span class="font-medium text-gray-800">${item.quantity} ${item.unit}</span>
+                    </li>
+                `).join('');
+
+                const itemHtml = `
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary mt-4">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-bold text-gray-900">${quote.name}</h3>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusClasses}">${statusText}</span>
+                        </div>
+                        
+                        <p class="text-sm text-gray-500 mb-2">Solicitada el: <span class="font-medium text-gray-700">${date}</span></p>
+                        <p class="text-sm text-gray-500 mb-4">Email: <span class="brand-primary font-medium">${quote.email}</span> | Teléfono: <span class="font-medium text-gray-700">${quote.phone}</span></p>
+
+                        <!-- Detalles de la Mudanza -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
+                            <div>
+                                <p class="font-semibold text-gray-700">Origen:</p>
+                                <p class="text-gray-600">${quote.origin || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-700">Destino:</p>
+                                <p class="text-gray-600">${quote.destination || 'N/A'}</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <p class="font-semibold text-gray-700">Fecha Estimada:</p>
+                                <p class="text-gray-600">${quote.date || 'Sin especificar'}</p>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Items -->
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <h4 class="font-semibold text-lg text-gray-800 mb-2">Items a Mover (${quote.items.length} totales)</h4>
+                            <ul class="space-y-1 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg">
+                                ${itemsList}
+                            </ul>
+                        </div>
+                        
+                        <!-- Acciones y Actualización de Estado -->
+                        <div class="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+                            <!-- Selector de Estado -->
+                            <select 
+                                id="status-select-${quote.id}" 
+                                class="flex-grow p-2 border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary"
+                                onchange="updateQuotationStatus('${quote.id}', this.value)"
+                            >
+                                <option value="Pendiente" ${quote.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                                <option value="En Proceso" ${quote.status === 'En Proceso' ? 'selected' : ''}>En Proceso</option>
+                                <option value="Completada" ${quote.status === 'Completada' ? 'selected' : ''}>Completada</option>
+                            </select>
+
+                            <!-- Botón de Eliminar -->
+                            <button 
+                                onclick="deleteQuotation('${quote.id}', '${quote.name}')" 
+                                class="bg-red-500 text-white p-2 rounded-lg text-sm font-medium hover:bg-red-600 transition duration-200 flex-shrink-0"
+                            >
+                                Eliminar
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+                listElement.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        // Función para actualizar el estado de una cotización
+        window.updateQuotationStatus = async function (id, newStatus) {
+            if (!db) {
+                console.error("Base de datos no inicializada.");
+                return;
+            }
+            const docRef = doc(db, `artifacts/${appId}/public/data/quotations`, id);
+            
+            try {
+                await updateDoc(docRef, {
+                    status: newStatus,
+                    updated_at: new Date()
+                });
+                console.log(`Estado de cotización ${id} actualizado a: ${newStatus}`);
+            } catch (error) {
+                console.error("Error al actualizar el estado:", error);
+                // Usamos una función simple de error en lugar de alert
+                document.getElementById('quotation-list').insertAdjacentHTML('afterbegin', `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">Error al actualizar: ${error.message}</div>`);
+            }
+        };
+
+        // Función para eliminar una cotización
+        window.deleteQuotation = async function (id, name) {
+            const confirmation = confirm(`¿Estás seguro de que quieres eliminar la solicitud de ${name}? Escribe 'SÍ' para confirmar.`);
+            
+            if (confirmation) {
+                if (!db) {
+                    console.error("Base de datos no inicializada.");
+                    return;
+                }
+                const docRef = doc(db, `artifacts/${appId}/public/data/quotations`, id);
+                
+                try {
+                    await deleteDoc(docRef);
+                    console.log(`Cotización ${id} eliminada exitosamente.`);
+                } catch (error) {
+                    console.error("Error al eliminar la cotización:", error);
+                    // Usamos una función simple de error en lugar de alert
+                    document.getElementById('quotation-list').insertAdjacentHTML('afterbegin', `<div class="p-3 bg-red-100 text-red-700 rounded-lg mb-2">Error al eliminar: ${error.message}</div>`);
+                }
+            }
+        };
+
+        // Iniciar la aplicación de Firebase
+        if(isConfigured) {
+            initializeFirebase();
+        } else {
+            console.warn("Firebase no inicializado: Claves no encontradas.");
+            document.getElementById('quotation-list').innerHTML = `
+                <div class="p-4 bg-red-100 rounded-lg border-l-4 border-red-500 text-red-700">
+                    <p class="font-bold">¡Atención! Falta Configuración de Firebase.</p>
+                    <p class="text-sm">Por favor, reemplaza "TU_API_KEY_AQUI" y "TU_DOMAIN_AQUI.firebaseapp.com" en el código fuente de este archivo.</p>
                 </div>
             `;
-            container.appendChild(card);
-        };
-
-        // --- Función global para ver el detalle completo (JSON) ---
-        window.verDetalle = (docId, button) => {
-            const detailDiv = document.getElementById(`detalle-${docId}`);
-            const preElement = detailDiv.querySelector('pre');
-
-            // Toggle de visibilidad
-            detailDiv.classList.toggle('hidden');
-            
-            if (!detailDiv.classList.contains('hidden')) {
-                // Mostrar JSON (lo buscamos en el snapshot local si fuera una app grande, pero aquí lo tenemos que compilar)
-                
-                // Nota: Firestore no permite obtener documentos por ID directamente desde onSnapshot sin usar getDoc,
-                // así que usaremos el JSON completo del objeto data (que está dentro del scope de startRealtimeListener,
-                // pero no lo podemos pasar directamente al onclick).
-                // Para este ejemplo simple, mostraremos un mensaje indicando cómo obtenerlo realmente.
-                
-                preElement.textContent = "Datos completos:\nSe necesita un 'getDoc' para cargar el JSON completo aquí. Por ahora, estos son los datos que se guardaron:\n" + JSON.stringify(document.querySelector(`[data-doc-id="${docId}"]`)?.data || {Error: "Datos no encontrados en el cache del DOM."}, null, 2);
-                
-                // Mejor aún: ya que el código dentro del <script type="module"> no puede definir funciones globales fácilmente, 
-                // re-compilaremos el JSON para el usuario a modo de ejemplo visual de lo que se guarda.
-                preElement.textContent = JSON.stringify(window.allCotizations.find(c => c.id === docId), null, 2);
-                button.textContent = 'Ocultar Detalle Completo';
-            } else {
-                button.textContent = 'Ver Detalle Completo';
-            }
-        };
-
-        // Ejecutar inicialización al cargar el script
-        window.onload = initializeFirebase;
+        }
     </script>
 </head>
 <body>
 
-    <!-- 1. BARRA DE NAVEGACIÓN (HEADER) -->
-    <header class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <!-- Logo/Marca -->
-            <a href="index.html#inicio" class="text-2xl font-bold text-primary hover:text-blue-700 transition duration-300">
-                MUDANZAS EXPRESS
+    <!-- Header del Panel -->
+    <header class="header-bg text-white shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Panel de Cotizaciones (Admin)</h1>
+            <a href="index.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-300">
+                Volver al Inicio
             </a>
-            <!-- Menú de Navegación -->
-            <nav id="desktop-menu">
-                <ul class="flex space-x-6">
-                    <li><a href="index.html" class="text-gray-600 hover:text-primary font-medium transition duration-300">← Volver a Inicio</a></li>
-                </ul>
-            </nav>
         </div>
     </header>
 
-    <!-- 2. CONTENIDO DEL PANEL -->
-    <main class="py-12 md:py-20">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-center mb-4 text-gray-800">
-                Panel de Cotizaciones Recibidas
-            </h1>
-            <p class="text-xl text-center text-gray-600 mb-10">
-                Datos actualizados en tiempo real desde Firestore.
-            </p>
-
-            <div class="bg-primary text-white p-4 rounded-lg shadow-md mb-6 flex justify-between items-center">
-                <h2 class="text-2xl font-semibold">Total de Solicitudes: <span id="total-cotizaciones" class="text-yellow-400 font-extrabold">0</span></h2>
-                <p class="text-sm bg-blue-700 px-3 py-1 rounded-full">User ID: <span class="font-mono text-xs">${typeof __initial_auth_token !== 'undefined' ? (typeof __initial_auth_token === 'string' ? 'AUTENTICADO' : 'ANÓNIMO') : 'ANÓNIMO'}</span></p>
+    <!-- Contenido Principal -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6 border-l-4 border-yellow-500">
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Instrucciones</h2>
+            <p class="text-gray-600 text-sm">Aquí puedes gestionar todas las solicitudes de cotización recibidas. Usa el selector de estado para marcar el progreso.</p>
+            <div class="text-xs text-gray-400 mt-2 flex justify-between">
+                <p>ID de Usuario Conectado: <span id="user-id-display" class="font-mono text-gray-600">Cargando...</span></p>
+                <p>App ID usado para Firestore: <span id="app-id-display" class="font-mono text-gray-600">Cargando...</span></p>
             </div>
-
-
-            <!-- Loader y Mensajes -->
-            <div id="loader" class="text-center p-8">
-                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10 mx-auto"></div>
-                <p id="loading-message" class="text-primary mt-2">Cargando cotizaciones...</p>
-            </div>
-            
-            <!-- Contenedor de las Cotizaciones -->
-            <div id="cotizaciones-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Las tarjetas de cotización se insertarán aquí por JavaScript -->
+            <div class="mt-4 p-2 bg-yellow-50 rounded text-yellow-700 text-xs font-medium border border-yellow-200">
+                ✅ **CONFIGURACIÓN LISTA:** Las claves de Firebase se han configurado correctamente.
             </div>
         </div>
+
+        <!-- Contenedor de la lista de cotizaciones -->
+        <div id="quotation-list" class="space-y-4">
+            <!-- Las cotizaciones se renderizarán aquí por JavaScript -->
+            <div class="p-8 text-center bg-white rounded-xl shadow-lg">
+                <p class="text-lg text-gray-500">Cargando solicitudes de cotización...</p>
+            </div>
+        </div>
+
     </main>
 
-    <!-- 3. PIE DE PÁGINA (FOOTER) -->
-    <footer class="bg-gray-900 text-white py-8 mt-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p class="mb-2">&copy; 2025 Mudanzas Express. Panel de Administración.</p>
-            <a href="index.html" class="hover:text-primary transition duration-300 text-sm">Volver al Sitio Web Principal</a>
-        </div>
+    <!-- Footer Simple -->
+    <footer class="mt-12 py-4 bg-gray-200 text-center text-gray-600 text-sm">
+        Panel de Administración de Mudanzas Express.
     </footer>
+
+    <!-- Lógica para confirmación sin alert() -->
+    <script>
+        // Función de confirmación customizada para evitar window.confirm/alert
+        function confirm(message) {
+            return window.prompt(message) === 'SÍ';
+        }
+    </script>
+
 </body>
 </html>
