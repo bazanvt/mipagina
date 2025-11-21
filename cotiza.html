@@ -68,6 +68,9 @@
     <!-- Biblioteca para simular la descarga/conversión a PDF/Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- LIBRERÍAS AÑADIDAS PARA LA FUNCIONALIDAD PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -202,6 +205,11 @@
                         <div id="spinner" class="spinner border-4 border-blue-200 h-6 w-6 ml-3 hidden"></div>
                     </button>
                     
+                    <!-- BOTÓN DE PDF AÑADIDO AQUÍ -->
+                    <button type="button" id="btnGenerarPDF" class="w-full bg-green-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-green-700 transition duration-300 mb-3">
+                        Generar Borrador de Cotización (PDF)
+                    </button>
+
                     <button type="button" id="btnDescargarCotizacion" class="w-full bg-gray-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-gray-700 transition duration-300">
                         Descargar Borrador de Inventario (Excel)
                     </button>
@@ -253,6 +261,8 @@
         const inventarioList = document.getElementById('inventario-list');
         const btnEnviar = document.getElementById('btnEnviarCotizacion');
         const btnDescargar = document.getElementById('btnDescargarCotizacion');
+        // Referencia al nuevo botón de PDF
+        const btnGenerarPDF = document.getElementById('btnGenerarPDF');
         const form = document.getElementById('cotizacion-form');
         const alertBox = document.getElementById('alertBox');
         const buttonText = document.getElementById('buttonText');
@@ -352,7 +362,7 @@
             alertBox.className = 'message-box transition duration-300 ease-in-out ' + type;
             alertBox.style.display = 'block';
             
-            // Ocultar después de 5 segundos
+            // Ocultar después de 7 segundos
             setTimeout(() => {
                 alertBox.style.display = 'none';
             }, 7000);
@@ -440,7 +450,56 @@
             }
         }
         
-        // --- 3. Asignación de Eventos ---
+        // --- 3. Función para generar PDF de la cotización visible ---
+        async function generarPDF() {
+            showMessage("Generando PDF... por favor espere.", "success");
+            
+            // Seleccionar el contenedor principal del formulario para el PDF
+            const content = document.getElementById('cotizacion-form');
+
+            // Usar window.jspdf.jsPDF (importado del script en el head)
+            const { jsPDF } = window.jspdf;
+
+            try {
+                // Capturar el contenido HTML usando html2canvas
+                const canvas = await html2canvas(content, {
+                    scale: 2, // Aumentar escala para mejor calidad
+                    useCORS: true, 
+                    windowWidth: content.scrollWidth,
+                    windowHeight: content.scrollHeight,
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4'); // Configuración A4
+                const imgWidth = 210; // Ancho A4 en mm
+                const pageHeight = 295; // Altura A4 en mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                // Añadir la primera página
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                // Si el contenido es más largo que una página, añadir páginas adicionales
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                // Guardar el archivo
+                pdf.save('Cotizacion_Mudanza_Express.pdf');
+                showMessage("PDF generado y descargado exitosamente.", "success");
+
+            } catch (error) {
+                console.error("Error al generar el PDF:", error);
+                showMessage("Error al generar el PDF. Revisa la consola.", "error");
+            }
+        }
+        
+        // --- 4. Asignación de Eventos ---
         document.addEventListener('DOMContentLoaded', () => {
             // Inicializar la autenticación
             authenticateUser();
@@ -451,6 +510,9 @@
 
             // Asignar el listener de Firebase al botón principal
             btnEnviar.addEventListener('click', enviarCotizacionAFirestore);
+            
+            // Asignar el listener del botón de PDF
+            btnGenerarPDF.addEventListener('click', generarPDF);
 
             // --- Lógica de Descarga de Inventario (Excel) - Sin cambios ---
             btnDescargar.addEventListener('click', () => {
