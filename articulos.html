@@ -151,7 +151,7 @@
             while (hayMas) {
                 // *** CORRECCIÓN CRÍTICA: Se usa la URL ABSOLUTA que funciona en tu navegador ***
                 // Esto ayuda a evitar errores de "Failed to fetch"
-                const url = `https://movingcrm.mx/pakCat2003.nsf/mueblesclaves?ReadViewEntries&Start=${start}&Count=${pageSize}`;
+                const url = `http://187.168.142.117/pakCat2003.nsf/mueblesclaves?ReadViewEntries&Start=${start}&Count=${pageSize}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`Error al obtener datos: ${response.status} ${response.statusText}.`);
