@@ -2,9 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Catálogos - Tabla de Articulos</title>
+    <title>Catálogo de Muebles - pakCat2003.nsf</title>
 
-    <!-- Librerías de jQuery y DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -29,25 +28,20 @@
             text-align: center;
             color: #333;
         }
-
-        /* Contenedor principal para el diseño de dos columnas */
         .main-container {
             display: flex;
             gap: 20px;
             width: 100%;
-            height: calc(100vh - 100px); /* Altura dinámica para que ocupe casi toda la pantalla */
+            height: calc(100vh - 100px);
         }
-
-        /* Panel de filtros (columna izquierda) */
         .filters-panel {
-            flex: 0 0 250px; /* Ancho fijo para el panel */
+            flex: 0 0 250px;
             background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow-y: auto;
         }
-
         .filters-group {
             margin-bottom: 20px;
         }
@@ -73,75 +67,76 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-
-        /* Contenedor de la tabla (columna derecha) */
         .table-container {
-            flex: 1; /* Ocupa el espacio restante */
+            flex: 1;
             background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow-y: auto; /* Para que la tabla interna tenga su propio scroll */
+            overflow-y: auto;
         }
-        
-        #tablaMovimientos {
+        #tablaArticulos { /* Cambié el ID a tablaArticulos para más claridad */
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
-        #tablaMovimientos th, #tablaMovimientos td {
+        #tablaArticulos th, #tablaArticulos td {
             border: 1px solid #e0e0e0;
             padding: 5px 8px;
             text-align: left;
         }
-        #tablaMovimientos thead th {
+        #tablaArticulos thead th {
             background-color: #f8f8f8;
             font-weight: bold;
             color: #000080;
+        }
+        /* Estilos del cargador (loader) */
+        #loader {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #007bff;
         }
     </style>
 </head>
 <body>
 
-    <h2>Catálogos 2025 - Tabla de articulos</h2>
+    <h2>Catálogo de Muebles - Vista Claves</h2>
 
     <div id="loader">
-        <div class="spinner"></div>
-        <div class="loader-text">Cargando movimientos, por favor espere...</div>
+        <div class="loader-text">Cargando catálogo, por favor espere...</div>
     </div>
 
     <div class="main-container" style="display:none;">
         
         <div class="filters-panel">
             <div class="filters-group">
-                <h3>Filtros</h3>
-                <label for="producto-filter">Producto</label>
-                <input type="text" id="producto-filter" placeholder="Buscar producto">
+                <h3>Filtros por Columna</h3>
+                <label for="clave-filter">Clave</label>
+                <input type="text" id="clave-filter" placeholder="Buscar clave (Col. 1)">
                 
-                <label for="color-filter">Color</label>
-                <input type="text" id="color-filter" placeholder="Buscar color">
+                <label for="descripcion-filter">Descripción</label>
+                <input type="text" id="descripcion-filter" placeholder="Buscar descripción (Col. 2)">
                 
-                <label for="medida-filter">Medida</label>
-                <input type="text" id="medida-filter" placeholder="Buscar medida">
-
-                <label for="marca-filter">Marca</label>
-                <input type="text" id="marca-filter" placeholder="Buscar marca">
+                <label for="conjunto-filter">Conjunto</label>
+                <input type="text" id="conjunto-filter" placeholder="Buscar conjunto (Col. 4)">
+                
             </div>
         </div>
 
         <div class="table-container">
-            <table id="tablaMovimientos" class="display">
+            <table id="tablaArticulos" class="display"> 
                 <thead>
                     <tr>
                         <th>Clave</th>
-                        <th>Descripcion</th>
-                        <th>conjunto</th>
-                        <th>m3</th>
-                        <th>Peso</th>
-                      </tr>
+                        <th>Descripción</th>
+                        <th>M3 (rpZA)</th>
+                        <th>Conjunto (rpNombreConjunto)</th>
+                        <th>Peso Aprox. (rpPeso)</th>
+                    </tr>
                 </thead>
                 <tbody>
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </div>
@@ -155,11 +150,11 @@
         
         try {
             while (hayMas) {
-                // Here we use the `movimientos` view as you indicated
-                const url = `https:movingcrm.mx/PakCat2003.nsf/mueblesclaves?ReadViewEntries&Start=${start}&Count=${pageSize}`;
+                // *** CORRECCIÓN CRÍTICA: Base de datos y Vista ***
+                const url = `https://movingcrm.mx/pakCat2003.nsf/mueblesclaves?ReadViewEntries&Start=${start}&Count=${pageSize}`;
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`Error al obtener datos: ${response.status} ${response.statusText}`);
+                    throw new Error(`Error al obtener datos: ${response.status} ${response.statusText}. Revise la vista 'mueblesclaves' y su URL.`);
                 }
                 const text = await response.text();
 
@@ -174,27 +169,17 @@
 
                 for (let entry of entries) {
                     const cols = entry.getElementsByTagName('entrydata');
+                    // *** CORRECCIÓN DE COLUMNAS A 5, Y TIPOS DE DATOS (TEXT O NUMBER) ***
                     allRows += `<tr>
-                        <td>${cols[0]?.textContent || ''}</td>
-                        <td>${cols[1]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[2]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[3]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[4]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[5]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[6]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[7]?.querySelector('number')?.textContent || '0'}</td>
-                        <td>${cols[8]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[9]?.querySelector('text')?.textContent || ''}</td>
-                        <td>${cols[10]?.querySelector('text')?.textContent || ''}</td>
-                    </tr>`;
+                        <td>${cols[0]?.querySelector('text')?.textContent || ''}</td> <td>${cols[1]?.querySelector('text')?.textContent || ''}</td> <td>${cols[2]?.querySelector('number')?.textContent || ''}</td> <td>${cols[3]?.querySelector('text')?.textContent || ''}</td> <td>${cols[4]?.querySelector('number')?.textContent || ''}</td> </tr>`;
                 }
                 start += pageSize;
             }
 
-            $('#tablaMovimientos tbody').html(allRows);
+            $('#tablaArticulos tbody').html(allRows); // Usamos ID correcto
 
             // Initialize DataTable
-            const table = $('#tablaMovimientos').DataTable({
+            const table = $('#tablaArticulos').DataTable({ // Usamos ID correcto
                 fixedHeader: true,
                 dom: 'Bfrtip',
                 buttons: [
@@ -205,29 +190,29 @@
                     { extend: 'colvis', text: 'Columnas' }
                 ],
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "Todos"]],
-                pageLength: 250
+                pageLength: 50, // Lo puse en 50 para que no cargue demasiado al inicio
+                scrollX: true // Útil si la tabla es muy ancha
             });
             
-            // Bind text filters
-            $('#producto-filter').on('keyup change clear', function() { table.column(3).search(this.value).draw(); });
-            $('#color-filter').on('keyup change clear', function() { table.column(4).search(this.value).draw(); });
-            $('#medida-filter').on('keyup change clear', function() { table.column(5).search(this.value).draw(); });
-            $('#marca-filter').on('keyup change clear', function() { table.column(6).search(this.value).draw(); });
+            // *** BINDING DE FILTROS A LAS COLUMNAS CORRECTAS (0, 1, 3) ***
+            $('#clave-filter').on('keyup change clear', function() { table.column(0).search(this.value).draw(); }); // Columna 0: Clave
+            $('#descripcion-filter').on('keyup change clear', function() { table.column(1).search(this.value).draw(); }); // Columna 1: Descripción
+            $('#conjunto-filter').on('keyup change clear', function() { table.column(3).search(this.value).draw(); }); // Columna 3: Conjunto
 
-            // Hide loader and show the table
+            // Ocultar cargador y mostrar la tabla
             $("#loader").hide();
             $(".main-container").show();
 
         } catch (err) {
             console.error("Error al cargar datos: ", err);
             $("#loader").hide();
-            $(".main-container").html("<p style='color: red; text-align: center;'>Hubo un error al cargar los datos. Por favor, intente de nuevo más tarde o contacte al administrador. Detalles: " + err.message + "</p>").show();
+            $(".main-container").html("<p style='color: red; text-align: center;'>Hubo un error al cargar los datos. Por favor, asegúrese de que la vista 'mueblesclaves' exista en pakCat2003.nsf y permita el acceso 'ReadViewEntries'. Detalles: " + err.message + "</p>").show();
         }
     }
 
     $(document).ready(() => {
         cargarTodo();
     });
-</script>
+    </script>
 </body>
 </html>
