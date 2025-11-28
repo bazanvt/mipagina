@@ -2,8 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Catálogo de Muebles - pakCat2003.nsf</title>
+    <title>Movimientos 2025.nsf - Tabla de Movimientos</title>
 
+    <!-- Librerías de jQuery y DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -19,7 +20,6 @@
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
 
     <style>
-        /* Estilos CSS */
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
@@ -29,20 +29,25 @@
             text-align: center;
             color: #333;
         }
+
+        /* Contenedor principal para el diseño de dos columnas */
         .main-container {
             display: flex;
             gap: 20px;
             width: 100%;
-            height: calc(100vh - 100px);
+            height: calc(100vh - 100px); /* Altura dinámica para que ocupe casi toda la pantalla */
         }
+
+        /* Panel de filtros (columna izquierda) */
         .filters-panel {
-            flex: 0 0 250px;
+            flex: 0 0 250px; /* Ancho fijo para el panel */
             background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow-y: auto;
         }
+
         .filters-group {
             margin-bottom: 20px;
         }
@@ -68,74 +73,71 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
+
+        /* Contenedor de la tabla (columna derecha) */
         .table-container {
-            flex: 1;
+            flex: 1; /* Ocupa el espacio restante */
             background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow-y: auto;
+            overflow-y: auto; /* Para que la tabla interna tenga su propio scroll */
         }
-        #tablaArticulos {
+        
+        #tablaMovimientos {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
-        #tablaArticulos th, #tablaArticulos td {
+        #tablaMovimientos th, #tablaMovimientos td {
             border: 1px solid #e0e0e0;
             padding: 5px 8px;
             text-align: left;
         }
-        #tablaArticulos thead th {
+        #tablaMovimientos thead th {
             background-color: #f8f8f8;
             font-weight: bold;
             color: #000080;
-        }
-        #loader {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.2em;
-            color: #007bff;
         }
     </style>
 </head>
 <body>
 
-    <h2>Catálogo de Muebles - Vista Claves</h2>
+    <h2>Movimientos 2025 - Tabla de Movimientos</h2>
 
     <div id="loader">
-        <div class="loader-text">Cargando catálogo, por favor espere...</div>
+        <div class="spinner"></div>
+        <div class="loader-text">Cargando movimientos, por favor espere...</div>
     </div>
 
     <div class="main-container" style="display:none;">
         
         <div class="filters-panel">
             <div class="filters-group">
-                <h3>Filtros por Columna</h3>
-                <label for="clave-filter">Clave</label>
-                <input type="text" id="clave-filter" placeholder="Buscar clave">
+                <h3>Filtros</h3>
+                <label for="producto-filter">Mueble</label>
+                <input type="text" id="producto-filter" placeholder="Buscar producto">
                 
-                <label for="descripcion-filter">Descripción</label>
-                <input type="text" id="descripcion-filter" placeholder="Buscar descripción">
+                <label for="color-filter">Color</label>
+                <input type="text" id="color-filter" placeholder="Buscar color">
                 
-                <label for="conjunto-filter">Conjunto</label>
-                <input type="text" id="conjunto-filter" placeholder="Buscar conjunto">
+                <label for="medida-filter">Medida</label>
+                <input type="text" id="medida-filter" placeholder="Buscar medida">
+
+                <label for="marca-filter">Marca</label>
+                <input type="text" id="marca-filter" placeholder="Buscar marca">
             </div>
         </div>
 
         <div class="table-container">
-            <table id="tablaArticulos" class="display"> 
+            <table id="tablaMovimientos" class="display">
                 <thead>
                     <tr>
-                        <th>Clave (rpClave)</th>
-                        <th>Descripción (rpDescripcion)</th>
-                        <th>M3 (rpZA)</th>
-                        <th>Conjunto (rpNombreConjunto)</th>
-                        <th>Peso Aprox. (rpPeso)</th>
+                        <th>Descripcion</th>
                     </tr>
                 </thead>
                 <tbody>
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -149,12 +151,11 @@
         
         try {
             while (hayMas) {
-                // *** CORRECCIÓN CRÍTICA: Se usa la URL ABSOLUTA que funciona en tu navegador ***
-                // Esto ayuda a evitar errores de "Failed to fetch"
-                const url = `http://movingcrm.mx/pakCat2003.nsf/mueblesclaves?ReadViewEntries&Start=${start}&Count=${pageSize}`;
+                // Here we use the `movimientos` view as you indicated
+                const url = `https://movingcrm.mx/PakCat2003.nsf/muebles?ReadViewEntries&Start=${start}&Count=${pageSize}`;
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`Error al obtener datos: ${response.status} ${response.statusText}.`);
+                    throw new Error(`Error al obtener datos: ${response.status} ${response.statusText}`);
                 }
                 const text = await response.text();
 
@@ -169,17 +170,18 @@
 
                 for (let entry of entries) {
                     const cols = entry.getElementsByTagName('entrydata');
-                    // Se extraen 5 columnas con los tipos de datos correctos (text/number)
                     allRows += `<tr>
-                        <td>${cols[0]?.querySelector('text')?.textContent || ''}</td> <td>${cols[1]?.querySelector('text')?.textContent || ''}</td> <td>${cols[2]?.querySelector('number')?.textContent || ''}</td> <td>${cols[3]?.querySelector('text')?.textContent || ''}</td> <td>${cols[4]?.querySelector('number')?.textContent || ''}</td> </tr>`;
+        
+                        <td>${cols[0]?.querySelector('text')?.textContent || ''}</td>
+                   </tr>`;
                 }
                 start += pageSize;
             }
 
-            $('#tablaArticulos tbody').html(allRows);
+            $('#tablaMovimientos tbody').html(allRows);
 
-            // Inicialización de DataTables
-            const table = $('#tablaArticulos').DataTable({
+            // Initialize DataTable
+            const table = $('#tablaMovimientos').DataTable({
                 fixedHeader: true,
                 dom: 'Bfrtip',
                 buttons: [
@@ -190,28 +192,25 @@
                     { extend: 'colvis', text: 'Columnas' }
                 ],
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "Todos"]],
-                pageLength: 50,
-                scrollX: true 
+                pageLength: 250
             });
             
-            // Binding de filtros a las columnas correctas (0=Clave, 1=Descripción, 3=Conjunto)
-            $('#clave-filter').on('keyup change clear', function() { table.column(0).search(this.value).draw(); });
-            $('#descripcion-filter').on('keyup change clear', function() { table.column(1).search(this.value).draw(); });
-            $('#conjunto-filter').on('keyup change clear', function() { table.column(3).search(this.value).draw(); });
-
+            // Bind text filters
+            $('#producto-filter').on('keyup change clear', function() { table.column(1).search(this.value).draw(); });
+                       // Hide loader and show the table
             $("#loader").hide();
             $(".main-container").show();
 
         } catch (err) {
             console.error("Error al cargar datos: ", err);
             $("#loader").hide();
-            $(".main-container").html("<p style='color: red; text-align: center;'>Hubo un error al cargar los datos. El servidor no permitió el acceso a los datos vía API. Por favor, revise los permisos de la vista 'mueblesclaves' para el comando ?ReadViewEntries. Detalles: " + err.message + "</p>").show();
+            $(".main-container").html("<p style='color: red; text-align: center;'>Hubo un error al cargar los datos. Por favor, intente de nuevo más tarde o contacte al administrador. Detalles: " + err.message + "</p>").show();
         }
     }
 
     $(document).ready(() => {
         cargarTodo();
     });
-    </script>
+</script>
 </body>
 </html>
